@@ -58,21 +58,33 @@ const fileToBase64 = (file) => new Promise((resolve, reject) => {
     reader.readAsDataURL(file);
 });
 
-// Upload image to Catbox.moe (free temp file host) and return URL
-async function uploadToTempHost(file) {
+// ImgBB API key - get yours free at https://api.imgbb.com/
+const IMGBB_API_KEY = 'd90955efed83e475e5d0b37cabb746fa'; // Replace with your key
+
+// Upload image to ImgBB (free image host) and return URL
+async function uploadToImageHost(file) {
+    if (!IMGBB_API_KEY || IMGBB_API_KEY === 'YOUR_IMGBB_API_KEY_HERE') {
+        log('ImgBB API key not set. Using base64.', 'error');
+        return await fileToBase64(file);
+    }
+
     const formData = new FormData();
-    formData.append('reqtype', 'fileupload');
-    formData.append('fileToUpload', file);
+    formData.append('image', file);
 
     try {
-        const res = await fetch('https://catbox.moe/user/api.php', {
+        const res = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
             method: 'POST',
             body: formData
         });
 
-        if (!res.ok) throw new Error('Upload failed');
-        const url = await res.text();
-        return url.trim();
+        if (!res.ok) throw new Error(`Upload failed: ${res.status}`);
+
+        const data = await res.json();
+        if (data.success && data.data && data.data.url) {
+            return data.data.url;
+        } else {
+            throw new Error('Invalid response from ImgBB');
+        }
     } catch (e) {
         log(`Upload failed: ${e.message}. Using base64 fallback.`, 'error');
         return await fileToBase64(file);
@@ -257,13 +269,15 @@ grokInput.addEventListener('change', async (e) => {
     for (let i=0; i < files.length; i++) {
         if (grokRefData.length >= 7) break;
 
-        log(`Processing image ${i+1}...`);
-        const imageData = await fileToBase64(files[i]);
-        grokRefData.push(imageData);
+        log(`Uploading image ${i+1} to ImgBB...`);
+        const imageUrl = await uploadToImageHost(files[i]);
+        log(`Image ${i+1} ready: ${imageUrl.substring(0, 50)}...`);
+
+        grokRefData.push(imageUrl);
 
         const chip = document.createElement('div');
         chip.className = 'preview-chip';
-        chip.style.backgroundImage = `url(${imageData})`;
+        chip.style.backgroundImage = `url(${imageUrl})`;
 
         const label = document.createElement('div');
         label.className = 'chip-label';
@@ -372,8 +386,11 @@ function buildPayload(isQuote = false) {
             throw new Error('GROK reqs at least 1 Reference Image (1-7)');
         }
 
-        // Send ALL images in reference_image_urls array
-        payload.reference_image_urls = grokRefData;
+        // API validation requires image_url (first image)
+        payload.image_url = grokRefData[0];
+
+        // Send all images (including first) as image_urls array for R2V processing
+        payload.image_urls = grokRefData;
     }
     
     return payload;
@@ -426,6 +443,8 @@ btnGenerate.addEventListener('click', async () => {
     
     try {
         log('Sending POST to API Queue Endpoint...');
+        console.log('Full payload being sent:', JSON.stringify(payload, null, 2));
+
         const res = await fetch(API_QUEUE_URL, {
             method: 'POST',
             headers: {
