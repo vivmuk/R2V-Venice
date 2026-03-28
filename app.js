@@ -282,9 +282,9 @@ function buildPayload(isQuote = false) {
         })).filter(e => e.frontal_image_url);
         
         if (elementsApiData.length > 0) payload.elements = elementsApiData;
-        if (klingSceneData.length > 0) payload.image_urls = klingSceneData;
+        if (klingSceneData.length > 0) payload.scene_image_urls = klingSceneData;
         
-        if (!payload.elements && !payload.image_urls) {
+        if (!payload.elements && !payload.scene_image_urls) {
             throw new Error('KLING O3 reqs at least 1 Element or Scene Ref');
         }
     } else {
