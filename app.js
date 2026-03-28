@@ -82,18 +82,21 @@ async function uploadToTempHost(file) {
 function setupFileDrop(dropZone, inputElement) {
     dropZone.addEventListener('dragover', (e) => {
         e.preventDefault();
-        dropZone.style.borderColor = "var(--primary-color)";
+        e.stopPropagation();
+        dropZone.style.borderColor = "var(--primary)";
     });
     dropZone.addEventListener('dragleave', (e) => {
         e.preventDefault();
+        e.stopPropagation();
         dropZone.style.borderColor = "";
     });
     dropZone.addEventListener('drop', (e) => {
         e.preventDefault();
+        e.stopPropagation();
         dropZone.style.borderColor = "";
         if (e.dataTransfer.files.length > 0) {
             inputElement.files = e.dataTransfer.files;
-            inputElement.dispatchEvent(new Event('change'));
+            inputElement.dispatchEvent(new Event('change', { bubbles: false }));
         }
     });
 }
@@ -241,7 +244,11 @@ const grokDrop = document.getElementById('grok-ref-drop');
 const grokInput = document.getElementById('grok-ref-input');
 const grokPreview = document.getElementById('grok-ref-preview');
 
-grokDrop.addEventListener('click', () => grokInput.click());
+grokDrop.addEventListener('click', (e) => {
+    e.stopPropagation();
+    grokInput.click();
+});
+
 grokInput.addEventListener('change', async (e) => {
     if (!e.target.files || e.target.files.length === 0) return;
 
@@ -250,11 +257,8 @@ grokInput.addEventListener('change', async (e) => {
     for (let i=0; i < files.length; i++) {
         if (grokRefData.length >= 7) break;
 
-        // Always upload to external host automatically
-        log(`Uploading image ${i+1}...`);
-        const imageData = await uploadToTempHost(files[i]);
-        log(`Image ${i+1} ready`);
-
+        log(`Processing image ${i+1}...`);
+        const imageData = await fileToBase64(files[i]);
         grokRefData.push(imageData);
 
         const chip = document.createElement('div');
@@ -270,9 +274,10 @@ grokInput.addEventListener('change', async (e) => {
     }
     log(`${grokRefData.length} image(s) ready`);
 
-    // Clear input after short delay to ensure all processing is complete
-    setTimeout(() => { e.target.value = ''; }, 100);
+    // Clear input value to allow re-selecting same files
+    e.target.value = '';
 });
+
 setupFileDrop(grokDrop, grokInput);
 
 // PROMPT UI HIGHIGHTER & ENHANCER
