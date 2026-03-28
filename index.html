@@ -25,7 +25,9 @@
         </header>
 
         <main class="control-panel">
-            <div class="panel-section model-select-section">
+            <!-- COL 1 -->
+            <div class="dashboard-col scrollable-col">
+                <div class="panel-section model-select-section" style="margin-bottom:20px;">
                 <h2>[01] SELECT_CORE_MODEL</h2>
                 <div class="select-wrapper">
                     <select id="model-select" class="terminal-input">
@@ -81,9 +83,12 @@
                     </div>
                     <div id="grok-ref-preview" class="preview-row mt-1"></div>
                 </div>
-            </div>
+                </div>
+            </div> <!-- END COL 1 -->
 
-            <div class="panel-section">
+            <!-- COL 2 -->
+            <div class="dashboard-col scrollable-col">
+                <div class="panel-section" style="margin-bottom:20px;">
                 <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px;">
                     <h2 style="margin-bottom: 0px; border:none; padding-bottom:0;">[03] INSTRUCTION_PROMPT</h2>
                     <button id="btn-enhance-prompt" class="btn-action">[ ENHANCE WITH AI ]</button>
@@ -133,13 +138,16 @@
                 </div>
             </div>
 
-            <div class="action-panel">
-                <button id="btn-quote" class="btn-secondary" style="width: 100%; margin-bottom: 10px; font-size: 14px; padding: 12px 20px;">[ REQUEST_ESTIMATE_QUOTE ]</button>
-                <button id="btn-generate" class="btn-primary">[ INITIATE_RENDER_SEQUENCE ]</button>
-                <button id="btn-clear" class="btn-danger">[ PURGE_DATA ]</button>
-            </div>
+                <div class="action-panel" style="margin-top:20px;">
+                    <button id="btn-quote" class="btn-secondary" style="width: 100%; margin-bottom: 10px; padding: 12px;">[ REQUEST_ESTIMATE_QUOTE ]</button>
+                    <button id="btn-generate" class="btn-primary">[ INITIATE_RENDER_SEQUENCE ]</button>
+                    <button id="btn-clear" class="btn-danger">[ PURGE_DATA ]</button>
+                </div>
+            </div> <!-- END COL 2 -->
 
-            <div class="output-panel" id="output-panel">
+            <!-- COL 3 -->
+            <div class="dashboard-col">
+                <div class="output-panel panel-section" id="output-panel" style="display:flex; flex-direction:column; height: 100%;">
                 <div class="output-header">
                     <span>> RENDER_OUTPUT_CHANNEL</span>
                     <span id="queue-status" class="cyan">AWAITING_COMMAND...</span>
@@ -154,7 +162,8 @@
                     <label>> AUTH_TOKEN (API_KEY):</label>
                     <input type="password" id="api-key" class="terminal-input auth-input" placeholder="Enter Venice API Key">
                 </div>
-            </div>
+                </div>
+            </div> <!-- END COL 3 -->
         </main>
     </div>
 

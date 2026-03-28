@@ -36,9 +36,9 @@ body {
     font-family: var(--font-primary);
     font-size: 15px;
     line-height: 1.6;
+    height: 100vh;
     min-height: 100vh;
-    overflow-x: hidden;
-    padding-bottom: 50px;
+    overflow: hidden;
 }
 
 /* Typography & General (Swiss Minimal) */
@@ -66,11 +66,14 @@ h3 {
 }
 
 .terminal-container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 30px 20px;
+    max-width: 100%;
+    height: 100vh;
+    margin: 0;
+    padding: 20px 30px;
     position: relative;
     z-index: 10;
+    display: flex;
+    flex-direction: column;
 }
 
 /* Header */
@@ -79,8 +82,9 @@ h3 {
     justify-content: space-between;
     align-items: flex-end;
     border-bottom: 2px solid var(--swiss-blue);
-    padding-bottom: 20px;
-    margin-bottom: 40px;
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+    flex-shrink: 0;
 }
 
 .sys-title h1 {
@@ -110,18 +114,38 @@ h3 {
 .cyan { color: var(--neon-cyan); }
 .blinking { animation: blink 2s infinite; }
 
-/* Main Panels - Glassmorphism */
+/* Main Panels - Dashboard Grid */
 .control-panel {
     display: grid;
-    grid-template-columns: 1fr;
-    gap: 30px;
+    grid-template-columns: 1.2fr 1.2fr 1fr;
+    gap: 20px;
+    flex-grow: 1;
+    overflow: hidden;
+}
+
+.dashboard-col {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.scrollable-col {
+    overflow-y: auto;
+    padding-right: 10px;
+}
+.scrollable-col::-webkit-scrollbar {
+    width: 6px;
+}
+.scrollable-col::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.2);
+    border-radius: 4px;
 }
 
 .panel-section {
     background: var(--glass-bg);
     border: 1px solid var(--glass-border);
     border-radius: 12px;
-    padding: 30px;
+    padding: 25px;
     box-shadow: var(--glass-shadow);
     backdrop-filter: var(--glass-blur);
     -webkit-backdrop-filter: var(--glass-blur);
@@ -401,11 +425,11 @@ h3 {
     font-weight: bold;
 }
 .output-content {
-    min-height: 350px;
+    flex-grow: 1;
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 30px;
+    padding: 20px;
     position: relative;
     background: rgba(0,0,0,0.2);
 }
