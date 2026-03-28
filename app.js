@@ -343,6 +343,7 @@ btnGenerate.addEventListener('click', async () => {
     log(`INITIATING_SEQUENCE for model: ${payload.model}`);
     queueStatus.innerText = "TRANSMITTING_DATA...";
     queueStatus.className = "blinking cyan";
+    btnGenerate.disabled = true;
     
     try {
         log('Sending POST to API Queue Endpoint...');
@@ -362,14 +363,16 @@ btnGenerate.addEventListener('click', async () => {
 
         const data = await res.json();
         const queueId = data.queue_id || data.id; // Fallback to id just in case
+        const responseModel = data.model || payload.model;
         log(`QUEUE ACCEPTED. ID: ${queueId}`, 'success');
         
-        pollVideoResult(queueId, payload.model, key);
+        pollVideoResult(queueId, responseModel, key);
 
     } catch (err) {
         log(`API_ERR: ${err.message}`, 'error');
         queueStatus.innerText = "SYS_ERROR";
         queueStatus.className = "log-error";
+        btnGenerate.disabled = false;
     }
 });
 
@@ -384,6 +387,7 @@ async function pollVideoResult(queueId, model, apiKey) {
             clearInterval(poll);
             log('POLLING TIMEOUT. MANUAL CHECK REQUIRED.', 'error');
             queueStatus.innerText = "TIMEOUT";
+            btnGenerate.disabled = false;
             return;
         }
 
@@ -399,7 +403,10 @@ async function pollVideoResult(queueId, model, apiKey) {
             });
 
             if (res.status === 404) return; // Wait
-            if (!res.ok) throw new Error(`Poll Error ${res.status}`);
+            if (!res.ok) {
+                const errBody = await res.text();
+                throw new Error(`Poll Error ${res.status}: ${errBody}`);
+            }
 
             const contentType = res.headers.get("Content-Type") || "";
 
@@ -411,6 +418,7 @@ async function pollVideoResult(queueId, model, apiKey) {
                 log('RENDER COMPLETE! STREAM DETECTED.', 'success');
                 queueStatus.innerText = "STREAM_ONLINE";
                 queueStatus.className = "green";
+                btnGenerate.disabled = false;
 
                 outputContent.innerHTML = `
                     <video class="video-player" src="${videoUrl}" controls autoplay loop></video>
@@ -419,13 +427,21 @@ async function pollVideoResult(queueId, model, apiKey) {
                 const data = await res.json();
                 if (data.status === 'failed' || data.status === 'error') {
                     clearInterval(poll);
-                    log('RENDER FAILED ON SERVER.', 'error');
+                    log(`RENDER FAILED ON SERVER: ${data.error || 'Unknown error'}`, 'error');
                     queueStatus.innerText = "RENDER_FAILED";
                     queueStatus.className = "log-error";
+                    btnGenerate.disabled = false;
                 }
             }
         } catch(e) {
             log(`POLL WARN: ${e.message}`, 'error');
+            // Check if it's a 400 or other terminal error and abort if so
+            if (e.message.includes("Poll Error 400") || e.message.includes("Poll Error 401") || e.message.includes("Poll Error 413") || e.message.includes("Poll Error 422")) {
+                clearInterval(poll);
+                queueStatus.innerText = "SYS_ERROR";
+                queueStatus.className = "log-error";
+                btnGenerate.disabled = false;
+            }
         }
     }, 5000); // Poll every 5 seconds
 }
