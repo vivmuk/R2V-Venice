@@ -31,15 +31,15 @@
                 <h2>[01] SELECT_CORE_MODEL</h2>
                 <div class="select-wrapper">
                     <select id="model-select" class="terminal-input">
+                        <option value="grok-imagine-reference-to-video">GROK IMAGINE R2V</option>
                         <option value="kling-o3-pro-reference-to-video">KLING O3 PRO R2V</option>
                         <option value="kling-o3-standard-reference-to-video">KLING O3 STD R2V</option>
-                        <option value="grok-imagine-reference-to-video">GROK IMAGINE R2V</option>
                     </select>
                 </div>
-                <div class="sys-msg" id="model-info-msg">// KLING_O3 SELECTED. REQUIRES IDENTITY ELEMENTS.</div>
+                <div class="sys-msg" id="model-info-msg">// GROK IMAGINE SELECTED. USES FLAT REF IMAGES (1-7).</div>
             </div>
 
-            <div class="panel-section ui-group" id="kling-ui">
+            <div class="panel-section ui-group hidden" id="kling-ui">
                 <h2>[02] CONFIGURE_KLING_STRUCT</h2>
                 <div class="kling-components">
                     <div class="sub-panel">
@@ -72,7 +72,7 @@
                 </div>
             </div>
 
-            <div class="panel-section ui-group hidden" id="grok-ui">
+            <div class="panel-section ui-group" id="grok-ui">
                 <h2>[02] CONFIGURE_GROK_REFS</h2>
                 <div class="sub-panel">
                     <h3>> FLAT_REFERENCE_IMAGES (1-7)</h3>
@@ -121,14 +121,14 @@
                             <option value="15">15 SECONDS</option>
                         </select>
                     </div>
-                    <div class="setting-item" id="audio-setting-item">
+                    <div class="setting-item hidden" id="audio-setting-item">
                         <label>AUDIO_SYNC</label>
                         <select id="audio-toggle" class="terminal-input">
                             <option value="false">FALSE [MUTE]</option>
                             <option value="true">TRUE [SYNCED]</option>
                         </select>
                     </div>
-                    <div class="setting-item hidden" id="resolution-setting-item">
+                    <div class="setting-item" id="resolution-setting-item">
                         <label>RESOLUTION</label>
                         <select id="resolution-toggle" class="terminal-input">
                             <option value="480p">480P [STD]</option>

@@ -58,6 +58,25 @@ const fileToBase64 = (file) => new Promise((resolve, reject) => {
     reader.readAsDataURL(file);
 });
 
+function setupFileDrop(dropZone, inputElement) {
+    dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.style.borderColor = "var(--primary-color)";
+    });
+    dropZone.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        dropZone.style.borderColor = "";
+    });
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.style.borderColor = "";
+        if (e.dataTransfer.files.length > 0) {
+            inputElement.files = e.dataTransfer.files;
+            inputElement.dispatchEvent(new Event('change'));
+        }
+    });
+}
+
 // UI EVENT LISTENERS
 modelSelect.addEventListener('change', (e) => {
     const val = e.target.value;
@@ -120,7 +139,9 @@ btnAddElement.addEventListener('click', () => {
                 log(`Frontal Anchor set for Element ${id.slice(-4)}`);
             }
         }
+        e.target.value = '';
     });
+    setupFileDrop(frontalDrop, frontalInput);
 
     const refInput = card.querySelector('.element-ref-input');
     const refDrop = card.querySelector('.ref-box');
@@ -148,7 +169,9 @@ btnAddElement.addEventListener('click', () => {
             refPreviewRow.appendChild(chip);
         }
         log(`Ref Angles updated for Element ${id.slice(-4)}`);
+        e.target.value = '';
     });
+    setupFileDrop(refDrop, refInput);
 
     elementsContainer.appendChild(card);
     log(`New Element Container [${id.slice(-4)}] Initialized.`);
@@ -172,7 +195,9 @@ sceneInput.addEventListener('change', async (e) => {
         scenePreview.appendChild(chip);
     }
     log(`Scene refs loaded. Total: ${klingSceneData.length}`);
+    e.target.value = '';
 });
+setupFileDrop(sceneDrop, sceneInput);
 
 // GROK REFS
 const grokDrop = document.getElementById('grok-ref-drop');
@@ -198,7 +223,9 @@ grokInput.addEventListener('change', async (e) => {
         grokPreview.appendChild(chip);
     }
     log(`Grok refs loaded. Total: ${grokRefData.length}`);
+    e.target.value = '';
 });
+setupFileDrop(grokDrop, grokInput);
 
 // PROMPT UI HIGHIGHTER & ENHANCER
 promptInput.addEventListener('blur', () => {
@@ -253,11 +280,8 @@ function buildPayload(isQuote = false) {
     const model = modelSelect.value;
     let payload = { model };
     
-    // Add duration correctly formatted ("5s" instead of "5") if needed, or keep as is.
-    // The API doc uses "5s" for durations now. Let's append "s" if not present.
-    let dur = duration.value;
-    if (!dur.endsWith('s')) dur += 's';
-    payload.duration = dur;
+    // Using number type for duration as per updated documentation
+    payload.duration = parseInt(duration.value, 10);
 
     if (model.includes('kling')) {
         payload.aspect_ratio = aspectRatio.value;
@@ -399,7 +423,7 @@ async function pollVideoResult(queueId, model, apiKey) {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${apiKey}` 
                 },
-                body: JSON.stringify({ model, queue_id: queueId })
+                body: JSON.stringify({ model, queue_id: queueId, delete_media_on_completion: true })
             });
 
             if (res.status === 404) return; // Wait
