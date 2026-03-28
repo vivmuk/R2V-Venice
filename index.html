@@ -10,17 +10,13 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="crt-overlay"></div>
-    <div class="scanlines"></div>
-
     <div class="terminal-container">
         <header class="sys-header">
             <div class="sys-title">
-                <h1>> VENICE_LINK // REF_TO_VIDEO_SYS_v1.0.4 <span class="cursor">_</span></h1>
+                <h1>Venice AI Video Studio</h1>
             </div>
             <div class="sys-status">
-                <span class="status-label">SYS.STATE:</span> <span class="status-val green blinking">ONLINE</span> | 
-                <span class="status-label">UPLINK:</span> <span class="status-val cyan">SECURE</span>
+                <span class="status-label">Status:</span> <span class="status-val green">Ready</span>
             </div>
         </header>
 
@@ -28,7 +24,7 @@
             <!-- COL 1 -->
             <div class="dashboard-col scrollable-col">
                 <div class="panel-section model-select-section" style="margin-bottom:20px;">
-                <h2>[01] SELECT_CORE_MODEL</h2>
+                <h2>Model</h2>
                 <div class="select-wrapper">
                     <select id="model-select" class="terminal-input">
                         <option value="grok-imagine-reference-to-video">GROK IMAGINE R2V</option>
@@ -36,15 +32,15 @@
                         <option value="kling-o3-standard-reference-to-video">KLING O3 STD R2V</option>
                     </select>
                 </div>
-                <div class="sys-msg" id="model-info-msg">// GROK IMAGINE SELECTED. USES FLAT REF IMAGES (1-7).</div>
+                <div class="sys-msg" id="model-info-msg">Grok Imagine selected. Upload 1-7 reference images.</div>
             </div>
 
             <div class="panel-section ui-group hidden" id="kling-ui">
-                <h2>[02] CONFIGURE_KLING_STRUCT</h2>
+                <h2>Kling Configuration</h2>
                 <div class="kling-components">
                     <div class="sub-panel">
-                        <h3>> IDENTITY_ELEMENTS (Max 7 combined)</h3>
-                        <p class="sys-hint">// Define characters. Frontal anchor required per element.</p>
+                        <h3>Identity Elements (Max 7)</h3>
+                        <p class="sys-hint">Define characters with frontal anchor image required per element.</p>
                         <div id="elements-container" class="upload-grid">
                             <!-- Elements dynamically injected here -->
                         </div>
@@ -52,8 +48,8 @@
                     </div>
 
                     <div class="sub-panel mt-1">
-                        <h3>> SCENE_REF_IMAGES (Max 4)</h3>
-                        <p class="sys-hint">// Set environment, style, mood.</p>
+                        <h3>Scene Images (Max 4)</h3>
+                        <p class="sys-hint">Set environment, style, and mood.</p>
                         <div class="file-drop-area" id="kling-scene-drop">
                             <span class="drop-text">Drag & Drop or Click to upload SCENE refs [4 max]</span>
                             <input type="file" id="kling-scene-input" multiple accept="image/*" class="hidden-input">
@@ -62,7 +58,7 @@
                     </div>
 
                     <div class="sub-panel mt-1">
-                        <h3>> START_FRAME (Optional)</h3>
+                        <h3>Start Frame (Optional)</h3>
                         <div class="file-drop-area" id="kling-start-drop">
                             <span class="drop-text">Upload Start Frame</span>
                             <input type="file" id="kling-start-input" accept="image/*" class="hidden-input">
@@ -73,12 +69,11 @@
             </div>
 
             <div class="panel-section ui-group" id="grok-ui">
-                <h2>[02] CONFIGURE_GROK_REFS</h2>
+                <h2>Reference Images</h2>
                 <div class="sub-panel">
-                    <h3>> FLAT_REFERENCE_IMAGES (1-7)</h3>
-                    <p class="sys-hint">// Use @Image1, @Image2 etc in prompt.</p>
+                    <p class="sys-hint">Upload 1-7 reference images. Use @Image1, @Image2, etc. in your prompt.</p>
                     <div class="file-drop-area" id="grok-ref-drop">
-                        <span class="drop-text">Drag & Drop or Click to upload REFS [7 max]</span>
+                        <span class="drop-text">Drop images here or click to browse</span>
                         <input type="file" id="grok-ref-input" multiple accept="image/*" class="hidden-input">
                     </div>
                     <div id="grok-ref-preview" class="preview-row mt-1"></div>
@@ -89,16 +84,16 @@
             <!-- COL 2 -->
             <div class="dashboard-col scrollable-col">
                 <div class="panel-section" style="margin-bottom:20px;">
-                <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px;">
-                    <h2 style="margin-bottom: 0px; border:none; padding-bottom:0;">[03] INSTRUCTION_PROMPT</h2>
-                    <button id="btn-enhance-prompt" class="btn-action">[ ENHANCE WITH AI ]</button>
+                <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 12px;">
+                    <h2 style="margin-bottom: 0px;">Prompt</h2>
+                    <button id="btn-enhance-prompt" class="btn-action">Enhance</button>
                 </div>
                 <div id="prompt-input" class="terminal-input rich-prompt" contenteditable="true"></div>
-                <div class="sys-hint" id="prompt-hint">// Ex: @Element1 walks through @Image1, camera tracking from behind</div>
+                <div class="sys-hint" id="prompt-hint">Example: @Image1 and @Image2 walking through a park, cinematic tracking shot</div>
             </div>
 
             <div class="panel-section settings-grid">
-                <h2>[04] SYS_PARAMETERS</h2>
+                <h2>Settings</h2>
                 <div class="settings-row">
                     <div class="setting-item">
                         <label>ASPECT_RATIO</label>
@@ -139,9 +134,9 @@
             </div>
 
                 <div class="action-panel" style="margin-top:20px;">
-                    <button id="btn-quote" class="btn-secondary" style="width: 100%; margin-bottom: 10px; padding: 12px;">[ REQUEST_ESTIMATE_QUOTE ]</button>
-                    <button id="btn-generate" class="btn-primary">[ INITIATE_RENDER_SEQUENCE ]</button>
-                    <button id="btn-clear" class="btn-danger">[ PURGE_DATA ]</button>
+                    <button id="btn-quote" class="btn-secondary" style="width: 100%;">Get Estimate</button>
+                    <button id="btn-generate" class="btn-primary">Generate Video</button>
+                    <button id="btn-clear" class="btn-danger">Clear All</button>
                 </div>
             </div> <!-- END COL 2 -->
 
@@ -149,18 +144,18 @@
             <div class="dashboard-col">
                 <div class="output-panel panel-section" id="output-panel" style="display:flex; flex-direction:column; height: 100%;">
                 <div class="output-header">
-                    <span>> RENDER_OUTPUT_CHANNEL</span>
-                    <span id="queue-status" class="cyan">AWAITING_COMMAND...</span>
+                    <span>Output</span>
+                    <span id="queue-status" class="cyan">Ready</span>
                 </div>
                 <div class="output-content" id="output-content">
-                    <div class="placeholder-text">// NO DATA STREAM DETECTED</div>
+                    <div class="placeholder-text">Your video will appear here</div>
                 </div>
                 <div class="log-console" id="log-console">
-                    <p>> SYS.BOOT COMPLETE. WAITING FOR API_KEY...</p>
+                    <p>Ready. Enter your API key below to start.</p>
                 </div>
                 <div class="api-key-panel mt-1">
-                    <label>> AUTH_TOKEN (API_KEY):</label>
-                    <input type="password" id="api-key" class="terminal-input auth-input" placeholder="Enter Venice API Key">
+                    <label>API Key:</label>
+                    <input type="password" id="api-key" class="terminal-input auth-input" placeholder="Enter your Venice API key">
                 </div>
                 </div>
             </div> <!-- END COL 3 -->

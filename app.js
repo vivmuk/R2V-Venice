@@ -58,6 +58,27 @@ const fileToBase64 = (file) => new Promise((resolve, reject) => {
     reader.readAsDataURL(file);
 });
 
+// Upload image to Catbox.moe (free temp file host) and return URL
+async function uploadToTempHost(file) {
+    const formData = new FormData();
+    formData.append('reqtype', 'fileupload');
+    formData.append('fileToUpload', file);
+
+    try {
+        const res = await fetch('https://catbox.moe/user/api.php', {
+            method: 'POST',
+            body: formData
+        });
+
+        if (!res.ok) throw new Error('Upload failed');
+        const url = await res.text();
+        return url.trim();
+    } catch (e) {
+        log(`Upload failed: ${e.message}. Using base64 fallback.`, 'error');
+        return await fileToBase64(file);
+    }
+}
+
 function setupFileDrop(dropZone, inputElement) {
     dropZone.addEventListener('dragover', (e) => {
         e.preventDefault();
@@ -83,13 +104,13 @@ modelSelect.addEventListener('change', (e) => {
     if (val.includes('kling')) {
         klingUi.classList.remove('hidden');
         grokUi.classList.add('hidden');
-        modelInfoMsg.innerText = `// KLING_O3 SELECTED. REQUIRES IDENTITY ELEMENTS.`;
+        modelInfoMsg.innerText = `Kling O3 selected. Configure identity elements below.`;
         audioSettingItem.classList.remove('hidden');
         resolutionSettingItem.classList.add('hidden');
     } else {
         klingUi.classList.add('hidden');
         grokUi.classList.remove('hidden');
-        modelInfoMsg.innerText = `// GROK IMAGINE SELECTED. USES FLAT REF IMAGES (1-7).`;
+        modelInfoMsg.innerText = `Grok Imagine selected. Upload 1-7 reference images.`;
         audioSettingItem.classList.add('hidden');
         resolutionSettingItem.classList.remove('hidden');
     }
@@ -228,12 +249,17 @@ grokInput.addEventListener('change', async (e) => {
 
     for (let i=0; i < files.length; i++) {
         if (grokRefData.length >= 7) break;
-        const b64 = await fileToBase64(files[i]);
-        grokRefData.push(b64);
+
+        // Always upload to external host automatically
+        log(`Uploading image ${i+1}...`);
+        const imageData = await uploadToTempHost(files[i]);
+        log(`Image ${i+1} ready`);
+
+        grokRefData.push(imageData);
 
         const chip = document.createElement('div');
         chip.className = 'preview-chip';
-        chip.style.backgroundImage = `url(${b64})`;
+        chip.style.backgroundImage = `url(${imageData})`;
 
         const label = document.createElement('div');
         label.className = 'chip-label';
@@ -242,7 +268,7 @@ grokInput.addEventListener('change', async (e) => {
 
         grokPreview.appendChild(chip);
     }
-    log(`Grok refs loaded. Total: ${grokRefData.length}`);
+    log(`${grokRefData.length} image(s) ready`);
 
     // Clear input after short delay to ensure all processing is complete
     setTimeout(() => { e.target.value = ''; }, 100);
@@ -341,8 +367,13 @@ function buildPayload(isQuote = false) {
             throw new Error('GROK reqs at least 1 Reference Image (1-7)');
         }
 
-        // Use reference_image_urls as shown in general API docs
-        payload.reference_image_urls = grokRefData;
+        // API requires image_url (singular) for primary image
+        payload.image_url = grokRefData[0];
+
+        // Add reference_image_urls if there are multiple images
+        if (grokRefData.length > 1) {
+            payload.reference_image_urls = grokRefData.slice(1);
+        }
     }
     
     return payload;
@@ -510,14 +541,13 @@ btnClear.addEventListener('click', () => {
 });
 
 // Init Log
-log('VENICE REF-TO-VIDEO COMMAND SYSTEM INITIALIZED.');
-log('==============================================');
+log('Venice Video Studio initialized.');
 
 // Local Storage for API key
 const savedKey = localStorage.getItem('venice_api_key');
 if (savedKey) {
     apiKeyInput.value = savedKey;
-    log('RESTORED AUTH_TOKEN FROM LOCAL STORAGE.');
+    log('API key restored from storage.');
 }
 
 apiKeyInput.addEventListener('input', (e) => {
