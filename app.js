@@ -372,13 +372,8 @@ function buildPayload(isQuote = false) {
             throw new Error('GROK reqs at least 1 Reference Image (1-7)');
         }
 
-        // API requires image_url (singular) for primary image
-        payload.image_url = grokRefData[0];
-
-        // Add reference_image_urls if there are multiple images
-        if (grokRefData.length > 1) {
-            payload.reference_image_urls = grokRefData.slice(1);
-        }
+        // Send ALL images in reference_image_urls array
+        payload.reference_image_urls = grokRefData;
     }
     
     return payload;
