@@ -128,8 +128,12 @@ btnAddElement.addEventListener('click', () => {
     
     frontalDrop.addEventListener('click', () => frontalInput.click());
     frontalInput.addEventListener('change', async (e) => {
-        if(e.target.files[0]) {
-            const b64 = await fileToBase64(e.target.files[0]);
+        if (!e.target.files.length) return;
+        const file = e.target.files[0];
+        e.target.value = ''; // clear immediately
+        
+        if(file) {
+            const b64 = await fileToBase64(file);
             const el = elementsData.find(el => el.id === id);
             if(el) {
                 el.frontal = b64;
@@ -139,7 +143,6 @@ btnAddElement.addEventListener('click', () => {
                 log(`Frontal Anchor set for Element ${id.slice(-4)}`);
             }
         }
-        e.target.value = '';
     });
     setupFileDrop(frontalDrop, frontalInput);
 
@@ -152,9 +155,12 @@ btnAddElement.addEventListener('click', () => {
         const el = elementsData.find(el => el.id === id);
         if(!el) return;
         
-        for (let i=0; i < e.target.files.length; i++) {
+        const files = Array.from(e.target.files);
+        e.target.value = ''; // clear immediately
+        
+        for (let i=0; i < files.length; i++) {
             if (el.refs.length >= 3) break;
-            const b64 = await fileToBase64(e.target.files[i]);
+            const b64 = await fileToBase64(files[i]);
             el.refs.push(b64);
             
             const chip = document.createElement('div');
@@ -169,7 +175,6 @@ btnAddElement.addEventListener('click', () => {
             refPreviewRow.appendChild(chip);
         }
         log(`Ref Angles updated for Element ${id.slice(-4)}`);
-        e.target.value = '';
     });
     setupFileDrop(refDrop, refInput);
 
@@ -184,9 +189,12 @@ const scenePreview = document.getElementById('kling-scene-preview');
 
 sceneDrop.addEventListener('click', () => sceneInput.click());
 sceneInput.addEventListener('change', async (e) => {
-    for (let i=0; i < e.target.files.length; i++) {
+    const files = Array.from(e.target.files);
+    e.target.value = ''; // clear immediately
+    
+    for (let i=0; i < files.length; i++) {
         if (klingSceneData.length >= 4) break;
-        const b64 = await fileToBase64(e.target.files[i]);
+        const b64 = await fileToBase64(files[i]);
         klingSceneData.push(b64);
         
         const chip = document.createElement('div');
@@ -195,7 +203,6 @@ sceneInput.addEventListener('change', async (e) => {
         scenePreview.appendChild(chip);
     }
     log(`Scene refs loaded. Total: ${klingSceneData.length}`);
-    e.target.value = '';
 });
 setupFileDrop(sceneDrop, sceneInput);
 
@@ -206,9 +213,12 @@ const grokPreview = document.getElementById('grok-ref-preview');
 
 grokDrop.addEventListener('click', () => grokInput.click());
 grokInput.addEventListener('change', async (e) => {
-    for (let i=0; i < e.target.files.length; i++) {
+    const files = Array.from(e.target.files);
+    e.target.value = ''; // clear immediately
+    
+    for (let i=0; i < files.length; i++) {
         if (grokRefData.length >= 7) break;
-        const b64 = await fileToBase64(e.target.files[i]);
+        const b64 = await fileToBase64(files[i]);
         grokRefData.push(b64);
         
         const chip = document.createElement('div');
@@ -223,7 +233,6 @@ grokInput.addEventListener('change', async (e) => {
         grokPreview.appendChild(chip);
     }
     log(`Grok refs loaded. Total: ${grokRefData.length}`);
-    e.target.value = '';
 });
 setupFileDrop(grokDrop, grokInput);
 
@@ -280,8 +289,10 @@ function buildPayload(isQuote = false) {
     const model = modelSelect.value;
     let payload = { model };
     
-    // Using number type for duration as per updated documentation
-    payload.duration = parseInt(duration.value, 10);
+    // Revert duration format to '5s' | '8s' | '10s' string as Venice backend precisely dictates
+    let dur = duration.value.toString();
+    if (!dur.endsWith('s')) dur += 's';
+    payload.duration = dur;
 
     if (model.includes('kling')) {
         payload.aspect_ratio = aspectRatio.value;
@@ -488,3 +499,14 @@ btnClear.addEventListener('click', () => {
 // Init Log
 log('VENICE REF-TO-VIDEO COMMAND SYSTEM INITIALIZED.');
 log('==============================================');
+
+// Local Storage for API key
+const savedKey = localStorage.getItem('venice_api_key');
+if (savedKey) {
+    apiKeyInput.value = savedKey;
+    log('RESTORED AUTH_TOKEN FROM LOCAL STORAGE.');
+}
+
+apiKeyInput.addEventListener('input', (e) => {
+    localStorage.setItem('venice_api_key', e.target.value.trim());
+});
