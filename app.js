@@ -328,8 +328,8 @@ function buildPayload(isQuote = false) {
             throw new Error('GROK reqs at least 1 Reference Image (1-7)');
         }
         
-        // Venice v2 payload format requires exactly image_url for image-to-video models
-        payload.image_url = grokRefData[0];
+        // Pass the array of data URLs to reference_image_urls per model validation
+        payload.reference_image_urls = grokRefData;
     }
     
     return payload;
