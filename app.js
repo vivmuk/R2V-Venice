@@ -128,7 +128,7 @@ btnAddElement.addEventListener('click', () => {
     
     frontalDrop.addEventListener('click', () => frontalInput.click());
     frontalInput.addEventListener('change', async (e) => {
-        if (!e.target.files.length) return;
+        if (!e.target.files || !e.target.files.length) return;
         const file = e.target.files[0];
 
         if(file) {
@@ -142,8 +142,8 @@ btnAddElement.addEventListener('click', () => {
                 log(`Frontal Anchor set for Element ${id.slice(-4)}`);
             }
 
-            // Clear input after processing
-            e.target.value = '';
+            // Clear input after short delay
+            setTimeout(() => { e.target.value = ''; }, 100);
         }
     });
     setupFileDrop(frontalDrop, frontalInput);
@@ -156,6 +156,7 @@ btnAddElement.addEventListener('click', () => {
     refInput.addEventListener('change', async (e) => {
         const el = elementsData.find(el => el.id === id);
         if(!el) return;
+        if (!e.target.files || e.target.files.length === 0) return;
 
         const files = Array.from(e.target.files);
 
@@ -177,8 +178,8 @@ btnAddElement.addEventListener('click', () => {
         }
         log(`Ref Angles updated for Element ${id.slice(-4)}`);
 
-        // Clear input after processing
-        e.target.value = '';
+        // Clear input after short delay
+        setTimeout(() => { e.target.value = ''; }, 100);
     });
     setupFileDrop(refDrop, refInput);
 
@@ -193,6 +194,8 @@ const scenePreview = document.getElementById('kling-scene-preview');
 
 sceneDrop.addEventListener('click', () => sceneInput.click());
 sceneInput.addEventListener('change', async (e) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+
     const files = Array.from(e.target.files);
 
     for (let i=0; i < files.length; i++) {
@@ -207,8 +210,8 @@ sceneInput.addEventListener('change', async (e) => {
     }
     log(`Scene refs loaded. Total: ${klingSceneData.length}`);
 
-    // Clear input after processing
-    e.target.value = '';
+    // Clear input after short delay
+    setTimeout(() => { e.target.value = ''; }, 100);
 });
 setupFileDrop(sceneDrop, sceneInput);
 
@@ -219,6 +222,8 @@ const grokPreview = document.getElementById('grok-ref-preview');
 
 grokDrop.addEventListener('click', () => grokInput.click());
 grokInput.addEventListener('change', async (e) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+
     const files = Array.from(e.target.files);
 
     for (let i=0; i < files.length; i++) {
@@ -239,8 +244,8 @@ grokInput.addEventListener('change', async (e) => {
     }
     log(`Grok refs loaded. Total: ${grokRefData.length}`);
 
-    // Clear input after processing to allow re-uploading same file
-    e.target.value = '';
+    // Clear input after short delay to ensure all processing is complete
+    setTimeout(() => { e.target.value = ''; }, 100);
 });
 setupFileDrop(grokDrop, grokInput);
 
@@ -297,8 +302,10 @@ function buildPayload(isQuote = false) {
     const model = modelSelect.value;
     let payload = { model };
     
-    // Duration should be "5", "8", or "10" as string (no 's' suffix)
-    payload.duration = duration.value.toString();
+    // Duration format: "5s", "8s", or "10s" with 's' suffix as API requires
+    let dur = duration.value.toString();
+    if (!dur.endsWith('s')) dur += 's';
+    payload.duration = dur;
 
     if (model.includes('kling')) {
         payload.aspect_ratio = aspectRatio.value;
@@ -334,8 +341,8 @@ function buildPayload(isQuote = false) {
             throw new Error('GROK reqs at least 1 Reference Image (1-7)');
         }
 
-        // Pass the array of data URLs to referenceImageUrls (camelCase as per API spec)
-        payload.referenceImageUrls = grokRefData;
+        // Use reference_image_urls as shown in general API docs
+        payload.reference_image_urls = grokRefData;
     }
     
     return payload;
