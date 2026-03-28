@@ -130,8 +130,7 @@ btnAddElement.addEventListener('click', () => {
     frontalInput.addEventListener('change', async (e) => {
         if (!e.target.files.length) return;
         const file = e.target.files[0];
-        e.target.value = ''; // clear immediately
-        
+
         if(file) {
             const b64 = await fileToBase64(file);
             const el = elementsData.find(el => el.id === id);
@@ -142,6 +141,9 @@ btnAddElement.addEventListener('click', () => {
                 card.querySelector('.drop-text-sm').classList.add('hidden');
                 log(`Frontal Anchor set for Element ${id.slice(-4)}`);
             }
+
+            // Clear input after processing
+            e.target.value = '';
         }
     });
     setupFileDrop(frontalDrop, frontalInput);
@@ -154,27 +156,29 @@ btnAddElement.addEventListener('click', () => {
     refInput.addEventListener('change', async (e) => {
         const el = elementsData.find(el => el.id === id);
         if(!el) return;
-        
+
         const files = Array.from(e.target.files);
-        e.target.value = ''; // clear immediately
-        
+
         for (let i=0; i < files.length; i++) {
             if (el.refs.length >= 3) break;
             const b64 = await fileToBase64(files[i]);
             el.refs.push(b64);
-            
+
             const chip = document.createElement('div');
             chip.className = 'preview-chip';
             chip.style.backgroundImage = `url(${b64})`;
-            
+
             const label = document.createElement('div');
             label.className = 'chip-label';
             label.innerText = `@Ref${i+1}`;
             chip.appendChild(label);
-            
+
             refPreviewRow.appendChild(chip);
         }
         log(`Ref Angles updated for Element ${id.slice(-4)}`);
+
+        // Clear input after processing
+        e.target.value = '';
     });
     setupFileDrop(refDrop, refInput);
 
@@ -190,19 +194,21 @@ const scenePreview = document.getElementById('kling-scene-preview');
 sceneDrop.addEventListener('click', () => sceneInput.click());
 sceneInput.addEventListener('change', async (e) => {
     const files = Array.from(e.target.files);
-    e.target.value = ''; // clear immediately
-    
+
     for (let i=0; i < files.length; i++) {
         if (klingSceneData.length >= 4) break;
         const b64 = await fileToBase64(files[i]);
         klingSceneData.push(b64);
-        
+
         const chip = document.createElement('div');
         chip.className = 'preview-chip';
         chip.style.backgroundImage = `url(${b64})`;
         scenePreview.appendChild(chip);
     }
     log(`Scene refs loaded. Total: ${klingSceneData.length}`);
+
+    // Clear input after processing
+    e.target.value = '';
 });
 setupFileDrop(sceneDrop, sceneInput);
 
@@ -214,25 +220,27 @@ const grokPreview = document.getElementById('grok-ref-preview');
 grokDrop.addEventListener('click', () => grokInput.click());
 grokInput.addEventListener('change', async (e) => {
     const files = Array.from(e.target.files);
-    e.target.value = ''; // clear immediately
-    
+
     for (let i=0; i < files.length; i++) {
         if (grokRefData.length >= 7) break;
         const b64 = await fileToBase64(files[i]);
         grokRefData.push(b64);
-        
+
         const chip = document.createElement('div');
         chip.className = 'preview-chip';
         chip.style.backgroundImage = `url(${b64})`;
-        
+
         const label = document.createElement('div');
         label.className = 'chip-label';
         label.innerText = `@Image${grokRefData.length}`;
         chip.appendChild(label);
-        
+
         grokPreview.appendChild(chip);
     }
     log(`Grok refs loaded. Total: ${grokRefData.length}`);
+
+    // Clear input after processing to allow re-uploading same file
+    e.target.value = '';
 });
 setupFileDrop(grokDrop, grokInput);
 
@@ -289,10 +297,8 @@ function buildPayload(isQuote = false) {
     const model = modelSelect.value;
     let payload = { model };
     
-    // Revert duration format to '5s' | '8s' | '10s' string as Venice backend precisely dictates
-    let dur = duration.value.toString();
-    if (!dur.endsWith('s')) dur += 's';
-    payload.duration = dur;
+    // Duration should be "5", "8", or "10" as string (no 's' suffix)
+    payload.duration = duration.value.toString();
 
     if (model.includes('kling')) {
         payload.aspect_ratio = aspectRatio.value;
@@ -327,9 +333,9 @@ function buildPayload(isQuote = false) {
         if (grokRefData.length === 0) {
             throw new Error('GROK reqs at least 1 Reference Image (1-7)');
         }
-        
-        // Pass the array of data URLs to reference_image_urls per model validation
-        payload.reference_image_urls = grokRefData;
+
+        // Pass the array of data URLs to referenceImageUrls (camelCase as per API spec)
+        payload.referenceImageUrls = grokRefData;
     }
     
     return payload;
