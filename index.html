@@ -84,8 +84,11 @@
             </div>
 
             <div class="panel-section">
-                <h2>[03] INSTRUCTION_PROMPT</h2>
-                <textarea id="prompt-input" class="terminal-input prompt-box" placeholder="AWAITING INPUT_STRING..."></textarea>
+                <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px;">
+                    <h2 style="margin-bottom: 0px; border:none; padding-bottom:0;">[03] INSTRUCTION_PROMPT</h2>
+                    <button id="btn-enhance-prompt" class="btn-action">[ ENHANCE WITH AI ]</button>
+                </div>
+                <div id="prompt-input" class="terminal-input rich-prompt" contenteditable="true"></div>
                 <div class="sys-hint" id="prompt-hint">// Ex: @Element1 walks through @Image1, camera tracking from behind</div>
             </div>
 

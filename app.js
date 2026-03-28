@@ -26,6 +26,7 @@ const btnGenerate = document.getElementById('btn-generate');
 const btnQuote = document.getElementById('btn-quote');
 const btnClear = document.getElementById('btn-clear');
 const btnAddElement = document.getElementById('btn-add-element');
+const btnEnhancePrompt = document.getElementById('btn-enhance-prompt');
 
 // Containers
 const elementsContainer = document.getElementById('elements-container');
@@ -138,6 +139,12 @@ btnAddElement.addEventListener('click', () => {
             const chip = document.createElement('div');
             chip.className = 'preview-chip';
             chip.style.backgroundImage = `url(${b64})`;
+            
+            const label = document.createElement('div');
+            label.className = 'chip-label';
+            label.innerText = `@Ref${i+1}`;
+            chip.appendChild(label);
+            
             refPreviewRow.appendChild(chip);
         }
         log(`Ref Angles updated for Element ${id.slice(-4)}`);
@@ -182,9 +189,62 @@ grokInput.addEventListener('change', async (e) => {
         const chip = document.createElement('div');
         chip.className = 'preview-chip';
         chip.style.backgroundImage = `url(${b64})`;
+        
+        const label = document.createElement('div');
+        label.className = 'chip-label';
+        label.innerText = `@Image${grokRefData.length}`;
+        chip.appendChild(label);
+        
         grokPreview.appendChild(chip);
     }
     log(`Grok refs loaded. Total: ${grokRefData.length}`);
+});
+
+// PROMPT UI HIGHIGHTER & ENHANCER
+promptInput.addEventListener('blur', () => {
+    let text = promptInput.innerText;
+    text = text.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    text = text.replace(/(@Image\d+|@Element\d+)/g, '<span class="ref-highlight">$1</span>');
+    promptInput.innerHTML = text;
+});
+
+btnEnhancePrompt.addEventListener('click', async () => {
+    const key = apiKeyInput.value.trim();
+    if (!key) { log('ERR: MISSING AUTH_TOKEN FOR ENHANCEMENT', 'error'); return; }
+    
+    let text = promptInput.innerText.trim();
+    if (!text) { log('ERR: NO PROMPT TO ENHANCE', 'error'); return; }
+
+    log('REQUESTING AI PROMPT ENHANCEMENT...');
+    btnEnhancePrompt.disabled = true;
+    
+    try {
+        const res = await fetch("https://api.venice.ai/api/v1/chat/completions", {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
+            body: JSON.stringify({
+                model: "llama-3.3-70b",
+                messages: [
+                    { role: "system", content: "You are an expert video prompt engineer. Enhance the user's prompt for an AI Video generator. Ensure you preserve any @ImageX or @ElementX tags exactly as they are. Keep it under 150 words. Focus on lighting, camera movement, and clear action. Do not add any conversational filler, output ONLY the enhanced prompt." },
+                    { role: "user", content: text }
+                ]
+            })
+        });
+        
+        if (!res.ok) throw new Error(`Chat API Failed: ${res.status}`);
+        const data = await res.json();
+        
+        let enhanced = data.choices[0].message.content;
+        enhanced = enhanced.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        enhanced = enhanced.replace(/(@Image\d+|@Element\d+)/g, '<span class="ref-highlight">$1</span>');
+        
+        promptInput.innerHTML = enhanced;
+        log('PROMPT ENHANCED SUCESSFULLY.', 'success');
+    } catch (e) {
+        log(`ENHANCE ERR: ${e.message}`, 'error');
+    } finally {
+        btnEnhancePrompt.disabled = false;
+    }
 });
 
 
@@ -210,7 +270,7 @@ function buildPayload(isQuote = false) {
     if (isQuote) return payload;
 
     // Full Generate Payload
-    const promptText = promptInput.value.trim();
+    const promptText = promptInput.innerText.trim();
     if (!promptText) throw new Error('PROMPT CANNOT BE EMPTY');
     payload.prompt = promptText;
 
@@ -232,7 +292,14 @@ function buildPayload(isQuote = false) {
         if (grokRefData.length === 0) {
             throw new Error('GROK reqs at least 1 Reference Image (1-7)');
         }
-        payload.referenceImageUrls = grokRefData;
+        
+        // Venice v2 payload format requires image_url for image-to-video models
+        payload.image_url = grokRefData[0];
+        
+        // Pass array if multiples are used contextually
+        if (grokRefData.length > 0) {
+            payload.image_urls = grokRefData;
+        }
     }
     
     return payload;
@@ -376,7 +443,7 @@ btnClear.addEventListener('click', () => {
     elementsContainer.innerHTML = '';
     scenePreview.innerHTML = '';
     grokPreview.innerHTML = '';
-    promptInput.value = '';
+    promptInput.innerHTML = '';
     log('SYS.PURGE COMPLETE.');
     outputContent.innerHTML = '<div class="placeholder-text">// NO DATA STREAM DETECTED</div>';
     queueStatus.innerText = "AWAITING_COMMAND...";
