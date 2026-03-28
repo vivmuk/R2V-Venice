@@ -1,0 +1,391 @@
+:root {
+    --bg-color: #050505;
+    --panel-bg: #0a0a0a;
+    --border-color: #1a1a1a;
+    --neon-green: #00FF41;
+    --neon-cyan: #00FFFF;
+    --neon-blue: #0066FF;
+    --neon-red: #FF003C;
+    --text-color: #e0e0e0;
+    --font-head: 'JetBrains Mono', monospace;
+    --font-body: 'IBM Plex Mono', monospace;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background-color: var(--bg-color);
+    color: var(--neon-green);
+    font-family: var(--font-body);
+    font-size: 14px;
+    line-height: 1.5;
+    min-height: 100vh;
+    overflow-x: hidden;
+    position: relative;
+    padding-bottom: 50px;
+}
+
+/* CRT Effects */
+.crt-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: radial-gradient(circle, rgba(0,0,0,0) 60%, rgba(0,0,0,0.6) 100%);
+    pointer-events: none;
+    z-index: 999;
+}
+
+.scanlines {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: linear-gradient(
+        to bottom,
+        rgba(255,255,255,0),
+        rgba(255,255,255,0) 50%,
+        rgba(0,0,0,0.1) 50%,
+        rgba(0,0,0,0.1)
+    );
+    background-size: 100% 4px;
+    pointer-events: none;
+    z-index: 998;
+    opacity: 0.6;
+}
+
+/* Typography & General */
+h1, h2, h3, h4 {
+    font-family: var(--font-head);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+h2 {
+    font-size: 16px;
+    border-bottom: 1px solid var(--neon-blue);
+    padding-bottom: 5px;
+    margin-bottom: 15px;
+    color: var(--neon-cyan);
+    text-shadow: 0 0 5px rgba(0,255,255,0.3);
+}
+
+h3 {
+    font-size: 14px;
+    color: var(--text-color);
+    margin-bottom: 10px;
+}
+
+.terminal-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+    position: relative;
+    z-index: 10;
+}
+
+/* Header */
+.sys-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    border-bottom: 2px solid var(--neon-green);
+    padding-bottom: 10px;
+    margin-bottom: 30px;
+}
+
+.sys-title h1 {
+    font-size: 24px;
+    color: var(--neon-green);
+    text-shadow: 0 0 10px rgba(0,255,65,0.4);
+}
+
+.cursor {
+    animation: blink 1s step-end infinite;
+}
+
+@keyframes blink {
+    50% { opacity: 0; }
+}
+
+.sys-status {
+    font-size: 12px;
+    font-family: var(--font-head);
+}
+
+.status-label { color: #888; }
+.status-val { font-weight: bold; }
+.green { color: var(--neon-green); text-shadow: 0 0 5px var(--neon-green); }
+.cyan { color: var(--neon-cyan); text-shadow: 0 0 5px var(--neon-cyan); }
+.blinking { animation: blink 2s infinite; }
+
+/* Main Panels */
+.control-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 25px;
+}
+
+.panel-section {
+    background: var(--panel-bg);
+    border: 1px solid var(--border-color);
+    padding: 20px;
+    box-shadow: inset 0 0 20px rgba(0,0,0,0.8);
+}
+
+.sys-msg, .sys-hint {
+    color: #666;
+    font-size: 12px;
+    margin-top: 5px;
+    font-style: italic;
+}
+
+.hidden { display: none !important; }
+
+/* Inputs */
+.terminal-input {
+    background: #000;
+    color: var(--neon-green);
+    border: 1px solid #333;
+    padding: 10px;
+    font-family: var(--font-body);
+    font-size: 14px;
+    width: 100%;
+    outline: none;
+    transition: all 0.2s;
+}
+
+.terminal-input:focus {
+    border-color: var(--neon-cyan);
+    box-shadow: 0 0 8px rgba(0,255,255,0.2);
+}
+
+.prompt-box {
+    height: 100px;
+    resize: vertical;
+}
+
+/* Grid Layouts */
+.upload-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 15px;
+}
+
+/* File Drop Areas */
+.file-drop-area {
+    border: 1px dashed #444;
+    background: #050505;
+    padding: 15px;
+    text-align: center;
+    position: relative;
+    cursor: pointer;
+    transition: all 0.2s;
+    min-height: 60px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.file-drop-area:hover, .file-drop-area.dragover {
+    border-color: var(--neon-cyan);
+    background: rgba(0,255,255,0.05);
+}
+
+.hidden-input {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    opacity: 0;
+    cursor: pointer;
+    width: 100%;
+    height: 100%;
+}
+
+.drop-text { color: #888; font-size: 13px; }
+.drop-text-sm { color: #888; font-size: 11px; }
+
+/* Image Previews */
+.preview-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.preview-chip {
+    width: 60px;
+    height: 60px;
+    background: #222;
+    border: 1px solid #444;
+    position: relative;
+    background-size: cover;
+    background-position: center;
+}
+
+.preview-chip .remove-btn {
+    position: absolute;
+    top: -5px; right: -5px;
+    background: #000;
+    color: var(--neon-red);
+    border: 1px solid var(--neon-red);
+    width: 16px; height: 16px;
+    font-size: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 5;
+}
+
+/* Cards */
+.element-card {
+    border: 1px solid #333;
+    background: #000;
+}
+.card-header {
+    background: #111;
+    padding: 8px 10px;
+    display: flex;
+    justify-content: space-between;
+    border-bottom: 1px solid #333;
+    font-family: var(--font-head);
+    font-size: 12px;
+}
+.btn-remove-element {
+    color: var(--neon-red);
+    cursor: pointer;
+}
+.card-body { padding: 10px; }
+
+/* Settings */
+.settings-grid .settings-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.setting-item {
+    flex: 1;
+    min-width: 150px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+.setting-item label {
+    font-family: var(--font-head);
+    font-size: 12px;
+    color: #888;
+}
+
+/* Buttons */
+.btn-primary, .btn-secondary, .btn-danger {
+    font-family: var(--font-head);
+    padding: 12px 20px;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    background: #000;
+    border: 1px solid;
+    text-transform: uppercase;
+    transition: all 0.2s;
+    letter-spacing: 1px;
+}
+
+.btn-primary {
+    color: var(--neon-green);
+    border-color: var(--neon-green);
+    width: 100%;
+}
+.btn-primary:hover {
+    background: rgba(0,255,65,0.1);
+    box-shadow: 0 0 15px rgba(0,255,65,0.2);
+}
+.btn-primary:disabled {
+    border-color: #333;
+    color: #555;
+    cursor: not-allowed;
+    background: #000;
+    box-shadow: none;
+}
+
+.btn-secondary {
+    color: var(--neon-cyan);
+    border-color: var(--neon-cyan);
+    font-size: 12px;
+    padding: 8px 15px;
+}
+.btn-secondary:hover { background: rgba(0,255,255,0.1); }
+
+.btn-danger {
+    color: var(--neon-red);
+    border-color: var(--neon-red);
+    width: 100%;
+    margin-top: 10px;
+}
+.btn-danger:hover { background: rgba(255,0,60,0.1); }
+
+/* Spacing Utils */
+.mt-1 { margin-top: 10px; }
+
+/* Output Panel */
+.output-panel {
+    border: 1px solid var(--neon-blue);
+    background: #000;
+    margin-top: 20px;
+}
+.output-header {
+    background: rgba(0,102,255,0.1);
+    padding: 10px;
+    border-bottom: 1px solid var(--neon-blue);
+    display: flex;
+    justify-content: space-between;
+    font-family: var(--font-head);
+    font-size: 12px;
+}
+.output-content {
+    min-height: 300px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    position: relative;
+    background: #050505;
+}
+.placeholder-text {
+    color: #444;
+    font-family: var(--font-head);
+    animation: blink 3s infinite;
+}
+
+.log-console {
+    height: 120px;
+    overflow-y: auto;
+    background: #0a0a0a;
+    border-top: 1px solid #333;
+    padding: 10px;
+    font-size: 11px;
+    color: #888;
+}
+.log-console p { margin-bottom: 4px; }
+.log-error { color: var(--neon-red); }
+.log-success { color: var(--neon-green); }
+
+.api-key-panel {
+    padding: 10px;
+    background: #111;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+}
+.auth-input {
+    flex: 1;
+    margin-left: 10px;
+    padding: 5px;
+}
+.video-player {
+    width: 100%;
+    max-height: 500px;
+    object-fit: contain;
+    border: 1px solid #333;
+}

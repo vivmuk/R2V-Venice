@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Venice AI Command Center | R2V</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=JetBrains+Mono:wght@400;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="crt-overlay"></div>
+    <div class="scanlines"></div>
+
+    <div class="terminal-container">
+        <header class="sys-header">
+            <div class="sys-title">
+                <h1>> VENICE_LINK // REF_TO_VIDEO_SYS_v1.0.4 <span class="cursor">_</span></h1>
+            </div>
+            <div class="sys-status">
+                <span class="status-label">SYS.STATE:</span> <span class="status-val green blinking">ONLINE</span> | 
+                <span class="status-label">UPLINK:</span> <span class="status-val cyan">SECURE</span>
+            </div>
+        </header>
+
+        <main class="control-panel">
+            <div class="panel-section model-select-section">
+                <h2>[01] SELECT_CORE_MODEL</h2>
+                <div class="select-wrapper">
+                    <select id="model-select" class="terminal-input">
+                        <option value="kling-o3-pro-reference-to-video">KLING O3 PRO R2V</option>
+                        <option value="kling-o3-standard-reference-to-video">KLING O3 STD R2V</option>
+                        <option value="grok-imagine-reference-to-video">GROK IMAGINE R2V</option>
+                    </select>
+                </div>
+                <div class="sys-msg" id="model-info-msg">// KLING_O3 SELECTED. REQUIRES IDENTITY ELEMENTS.</div>
+            </div>
+
+            <div class="panel-section ui-group" id="kling-ui">
+                <h2>[02] CONFIGURE_KLING_STRUCT</h2>
+                <div class="kling-components">
+                    <div class="sub-panel">
+                        <h3>> IDENTITY_ELEMENTS (Max 7 combined)</h3>
+                        <p class="sys-hint">// Define characters. Frontal anchor required per element.</p>
+                        <div id="elements-container" class="upload-grid">
+                            <!-- Elements dynamically injected here -->
+                        </div>
+                        <button class="btn-secondary mt-1" id="btn-add-element">+ ADD_ELEMENT</button>
+                    </div>
+
+                    <div class="sub-panel mt-1">
+                        <h3>> SCENE_REF_IMAGES (Max 4)</h3>
+                        <p class="sys-hint">// Set environment, style, mood.</p>
+                        <div class="file-drop-area" id="kling-scene-drop">
+                            <span class="drop-text">Drag & Drop or Click to upload SCENE refs [4 max]</span>
+                            <input type="file" id="kling-scene-input" multiple accept="image/*" class="hidden-input">
+                        </div>
+                        <div id="kling-scene-preview" class="preview-row mt-1"></div>
+                    </div>
+
+                    <div class="sub-panel mt-1">
+                        <h3>> START_FRAME (Optional)</h3>
+                        <div class="file-drop-area" id="kling-start-drop">
+                            <span class="drop-text">Upload Start Frame</span>
+                            <input type="file" id="kling-start-input" accept="image/*" class="hidden-input">
+                        </div>
+                        <div id="kling-start-preview" class="preview-row mt-1"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel-section ui-group hidden" id="grok-ui">
+                <h2>[02] CONFIGURE_GROK_REFS</h2>
+                <div class="sub-panel">
+                    <h3>> FLAT_REFERENCE_IMAGES (1-7)</h3>
+                    <p class="sys-hint">// Use @Image1, @Image2 etc in prompt.</p>
+                    <div class="file-drop-area" id="grok-ref-drop">
+                        <span class="drop-text">Drag & Drop or Click to upload REFS [7 max]</span>
+                        <input type="file" id="grok-ref-input" multiple accept="image/*" class="hidden-input">
+                    </div>
+                    <div id="grok-ref-preview" class="preview-row mt-1"></div>
+                </div>
+            </div>
+
+            <div class="panel-section">
+                <h2>[03] INSTRUCTION_PROMPT</h2>
+                <textarea id="prompt-input" class="terminal-input prompt-box" placeholder="AWAITING INPUT_STRING..."></textarea>
+                <div class="sys-hint" id="prompt-hint">// Ex: @Element1 walks through @Image1, camera tracking from behind</div>
+            </div>
+
+            <div class="panel-section settings-grid">
+                <h2>[04] SYS_PARAMETERS</h2>
+                <div class="settings-row">
+                    <div class="setting-item">
+                        <label>ASPECT_RATIO</label>
+                        <select id="aspect-ratio" class="terminal-input">
+                            <option value="16:9">16:9 [WIDE]</option>
+                            <option value="9:16">9:16 [TALL]</option>
+                            <option value="1:1">1:1 [SQUARE]</option>
+                            <option value="4:3">4:3 [CLASSIC]</option>
+                            <option value="3:2">3:2 [PHOTO]</option>
+                            <option value="2:3">2:3 [PORTRAIT]</option>
+                            <option value="3:4">3:4 [VERT_CLASSIC]</option>
+                        </select>
+                    </div>
+                    <div class="setting-item">
+                        <label>DURATION</label>
+                        <select id="duration" class="terminal-input">
+                            <option value="5">5 SECONDS</option>
+                            <option value="8">8 SECONDS</option>
+                            <option value="10">10 SECONDS</option>
+                            <option value="15">15 SECONDS</option>
+                        </select>
+                    </div>
+                    <div class="setting-item" id="audio-setting-item">
+                        <label>AUDIO_SYNC</label>
+                        <select id="audio-toggle" class="terminal-input">
+                            <option value="false">FALSE [MUTE]</option>
+                            <option value="true">TRUE [SYNCED]</option>
+                        </select>
+                    </div>
+                    <div class="setting-item hidden" id="resolution-setting-item">
+                        <label>RESOLUTION</label>
+                        <select id="resolution-toggle" class="terminal-input">
+                            <option value="480p">480P [STD]</option>
+                            <option value="720p">720P [HIGH]</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="action-panel">
+                <button id="btn-quote" class="btn-secondary" style="width: 100%; margin-bottom: 10px; font-size: 14px; padding: 12px 20px;">[ REQUEST_ESTIMATE_QUOTE ]</button>
+                <button id="btn-generate" class="btn-primary">[ INITIATE_RENDER_SEQUENCE ]</button>
+                <button id="btn-clear" class="btn-danger">[ PURGE_DATA ]</button>
+            </div>
+
+            <div class="output-panel" id="output-panel">
+                <div class="output-header">
+                    <span>> RENDER_OUTPUT_CHANNEL</span>
+                    <span id="queue-status" class="cyan">AWAITING_COMMAND...</span>
+                </div>
+                <div class="output-content" id="output-content">
+                    <div class="placeholder-text">// NO DATA STREAM DETECTED</div>
+                </div>
+                <div class="log-console" id="log-console">
+                    <p>> SYS.BOOT COMPLETE. WAITING FOR API_KEY...</p>
+                </div>
+                <div class="api-key-panel mt-1">
+                    <label>> AUTH_TOKEN (API_KEY):</label>
+                    <input type="password" id="api-key" class="terminal-input auth-input" placeholder="Enter Venice API Key">
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Templates -->
+    <template id="element-template">
+        <div class="element-card" data-id="{id}">
+            <div class="card-header">
+                <span>> @Element{num}</span>
+                <span class="btn-remove-element" title="Purge Element">[X]</span>
+            </div>
+            <div class="card-body">
+                <div class="frontal-box file-drop-area">
+                    <span class="drop-text-sm">Frontal Photo (Click/Drop)</span>
+                    <input type="file" accept="image/*" class="hidden-input frontal-input">
+                    <div class="preview-img hidden" style="width:100%; height:60px; background-size:cover; background-position:center; margin-top:5px; border:1px solid #333;"></div>
+                </div>
+                <div class="ref-box mt-1 file-drop-area">
+                    <span class="drop-text-sm">Ref Angles (Max 3)</span>
+                    <input type="file" multiple accept="image/*" class="hidden-input element-ref-input">
+                </div>
+                <div class="element-refs-preview preview-row mt-1"></div>
+            </div>
+        </div>
+    </template>
+
+    <script src="app.js"></script>
+</body>
+</html>
