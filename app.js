@@ -461,7 +461,7 @@ btnGenerate.addEventListener('click', async () => {
         const responseModel = data.model || payload.model;
         log(`QUEUE ACCEPTED. ID: ${queueId}`, 'success');
         
-        pollVideoResult(queueId, responseModel, key);
+        pollVideoResult(queueId, responseModel, key, payload);
 
     } catch (err) {
         log(`API_ERR: ${err.message}`, 'error');
@@ -471,10 +471,10 @@ btnGenerate.addEventListener('click', async () => {
     }
 });
 
-async function pollVideoResult(queueId, model, apiKey) {
+async function pollVideoResult(queueId, model, apiKey, originalPayload) {
     queueStatus.innerText = "RENDERING_IN_PROGRESS...";
     let attempts = 0;
-    const maxAttempts = 120; // 10 minutes total max?
+    const maxAttempts = 120;
 
     const poll = setInterval(async () => {
         attempts++;
@@ -488,13 +488,20 @@ async function pollVideoResult(queueId, model, apiKey) {
 
         try {
             log(`Polling retrieve... (${attempts}/${maxAttempts})`);
+
+            // Build retrieve body - include reference_image_urls for Grok R2V
+            const retrieveBody = { model, queue_id: queueId, delete_media_on_completion: true };
+            if (originalPayload.image_url) {
+                retrieveBody.reference_image_urls = [originalPayload.image_url];
+            }
+
             const res = await fetch(API_POLL_URL, {
                 method: 'POST',
-                headers: { 
+                headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${apiKey}` 
+                    'Authorization': `Bearer ${apiKey}`
                 },
-                body: JSON.stringify({ model, queue_id: queueId, delete_media_on_completion: true })
+                body: JSON.stringify(retrieveBody)
             });
 
             if (res.status === 404) return; // Wait
