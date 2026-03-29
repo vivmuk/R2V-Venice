@@ -33,13 +33,16 @@ const elementsContainer = document.getElementById('elements-container');
 const logConsole = document.getElementById('log-console');
 const outputContent = document.getElementById('output-content');
 const queueStatus = document.getElementById('queue-status');
+const statusDot = document.getElementById('status-dot');
+const outputStatusBadge = document.getElementById('output-status-badge');
 const elementTemplate = document.getElementById('element-template');
+const refTagsContainer = document.getElementById('ref-tags');
 
 // STATE
-let elementsData = []; // { id, frontal: base64, refs: [base64...] }
-let klingSceneData = []; // [base64...]
-let klingStartData = null; // base64
-let grokRefData = []; // [base64...]
+let elementsData = [];
+let klingSceneData = [];
+let klingStartData = null;
+let grokRefData = [];
 
 // UTILS
 function log(msg, type = 'info') {
@@ -51,6 +54,27 @@ function log(msg, type = 'info') {
     logConsole.scrollTop = logConsole.scrollHeight;
 }
 
+function setStatus(text, state) {
+    queueStatus.innerText = text;
+    statusDot.className = 'status-dot';
+    outputStatusBadge.className = 'output-status';
+    if (state === 'ready') {
+        outputStatusBadge.classList.add('ready');
+        outputStatusBadge.innerText = 'Ready';
+    } else if (state === 'processing') {
+        statusDot.classList.add('processing');
+        outputStatusBadge.classList.add('processing');
+        outputStatusBadge.innerText = text;
+    } else if (state === 'complete') {
+        outputStatusBadge.classList.add('complete');
+        outputStatusBadge.innerText = 'Complete';
+    } else if (state === 'error') {
+        statusDot.classList.add('error');
+        outputStatusBadge.classList.add('error');
+        outputStatusBadge.innerText = text;
+    }
+}
+
 const fileToBase64 = (file) => new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result);
@@ -58,10 +82,9 @@ const fileToBase64 = (file) => new Promise((resolve, reject) => {
     reader.readAsDataURL(file);
 });
 
-// ImgBB API key - get yours free at https://api.imgbb.com/
-const IMGBB_API_KEY = 'd90955efed83e475e5d0b37cabb746fa'; // Replace with your key
+// ImgBB API key
+const IMGBB_API_KEY = 'd90955efed83e475e5d0b37cabb746fa';
 
-// Upload image to ImgBB (free image host) and return URL
 async function uploadToImageHost(file) {
     if (!IMGBB_API_KEY || IMGBB_API_KEY === 'YOUR_IMGBB_API_KEY_HERE') {
         log('ImgBB API key not set. Using base64.', 'error');
@@ -95,17 +118,17 @@ function setupFileDrop(dropZone, inputElement) {
     dropZone.addEventListener('dragover', (e) => {
         e.preventDefault();
         e.stopPropagation();
-        dropZone.style.borderColor = "var(--primary)";
+        dropZone.classList.add('drag-over');
     });
     dropZone.addEventListener('dragleave', (e) => {
         e.preventDefault();
         e.stopPropagation();
-        dropZone.style.borderColor = "";
+        dropZone.classList.remove('drag-over');
     });
     dropZone.addEventListener('drop', (e) => {
         e.preventDefault();
         e.stopPropagation();
-        dropZone.style.borderColor = "";
+        dropZone.classList.remove('drag-over');
         if (e.dataTransfer.files.length > 0) {
             inputElement.files = e.dataTransfer.files;
             inputElement.dispatchEvent(new Event('change', { bubbles: false }));
@@ -113,72 +136,112 @@ function setupFileDrop(dropZone, inputElement) {
     });
 }
 
-// UI EVENT LISTENERS
+// ========================
+// PROMPT NORMALIZATION
+// ========================
+// Automatically fix @image1 → @Image1, @IMAGE2 → @Image2, etc.
+// This runs before sending so users don't need to worry about case.
+function normalizePromptText(text) {
+    return text.replace(/@image(\d+)/gi, (_m, num) => `@Image${num}`)
+               .replace(/@element(\d+)/gi, (_m, num) => `@Element${num}`);
+}
+
+// ========================
+// REFERENCE TAG BUTTONS
+// ========================
+function updateRefTags() {
+    refTagsContainer.innerHTML = '';
+    for (let i = 0; i < grokRefData.length; i++) {
+        const btn = document.createElement('button');
+        btn.className = 'ref-tag-btn';
+        btn.innerText = `@Image${i + 1}`;
+        btn.addEventListener('click', () => {
+            // Insert tag at cursor or end of prompt
+            promptInput.focus();
+            const sel = window.getSelection();
+            const tag = `@Image${i + 1} `;
+            if (sel.rangeCount) {
+                const range = sel.getRangeAt(0);
+                // Only insert at cursor if inside prompt
+                if (promptInput.contains(range.commonAncestorContainer)) {
+                    range.deleteContents();
+                    range.insertNode(document.createTextNode(tag));
+                    range.collapse(false);
+                } else {
+                    promptInput.innerText += tag;
+                }
+            } else {
+                promptInput.innerText += tag;
+            }
+        });
+        refTagsContainer.appendChild(btn);
+    }
+}
+
+// ========================
+// MODEL SWITCHING
+// ========================
 modelSelect.addEventListener('change', (e) => {
     const val = e.target.value;
     if (val.includes('kling')) {
         klingUi.classList.remove('hidden');
         grokUi.classList.add('hidden');
-        modelInfoMsg.innerText = `Kling O3 selected. Configure identity elements below.`;
+        modelInfoMsg.innerHTML = 'Configure identity elements, scene images, and start frame below.';
         audioSettingItem.classList.remove('hidden');
         resolutionSettingItem.classList.add('hidden');
     } else {
         klingUi.classList.add('hidden');
         grokUi.classList.remove('hidden');
-        modelInfoMsg.innerText = `Grok Imagine selected. Upload 1-7 reference images.`;
+        modelInfoMsg.innerHTML = 'Upload 1–7 reference images, then describe your video using <strong>@Image1</strong>, <strong>@Image2</strong>, etc.';
         audioSettingItem.classList.add('hidden');
         resolutionSettingItem.classList.remove('hidden');
     }
 });
 
+// ========================
 // KLING ELEMENTS LOGIC
+// ========================
 let elementCounter = 0;
 btnAddElement.addEventListener('click', () => {
     if (elementsData.length >= 7) {
-        log('MAXIMUM ELEMENTS REACHED [7]', 'error');
+        log('Maximum 7 elements reached.', 'error');
         return;
     }
-    
+
     elementCounter++;
     const id = Date.now().toString();
     elementsData.push({ id, frontal: null, refs: [] });
-    
+
     const tpl = elementTemplate.content.cloneNode(true);
     const card = tpl.querySelector('.element-card');
     card.dataset.id = id;
-    
-    // Replace placeholders
     card.innerHTML = card.innerHTML.replace(/{num}/g, elementCounter).replace(/{id}/g, id);
-    
-    // Bind Events
+
     const btnRemove = card.querySelector('.btn-remove-element');
     btnRemove.addEventListener('click', () => {
         card.remove();
         elementsData = elementsData.filter(e => e.id !== id);
-        log(`Element @Element${elementCounter} Purged.`);
+        log(`Element removed.`);
     });
-    
+
     const frontalInput = card.querySelector('.frontal-input');
     const frontalDrop = card.querySelector('.frontal-box');
     const previewImg = card.querySelector('.preview-img');
-    
+
     frontalDrop.addEventListener('click', () => frontalInput.click());
     frontalInput.addEventListener('change', async (e) => {
         if (!e.target.files || !e.target.files.length) return;
         const file = e.target.files[0];
-
-        if(file) {
+        if (file) {
             const b64 = await fileToBase64(file);
             const el = elementsData.find(el => el.id === id);
-            if(el) {
+            if (el) {
                 el.frontal = b64;
                 previewImg.style.backgroundImage = `url(${b64})`;
                 previewImg.classList.remove('hidden');
-                card.querySelector('.drop-text-sm').classList.add('hidden');
-                log(`Frontal Anchor set for Element ${id.slice(-4)}`);
+                card.querySelector('.drop-zone-text').classList.add('hidden');
+                log(`Frontal set for Element ${elementCounter}`);
             }
-
-            // Clear input after short delay
             setTimeout(() => { e.target.value = ''; }, 100);
         }
     });
@@ -191,12 +254,11 @@ btnAddElement.addEventListener('click', () => {
     refDrop.addEventListener('click', () => refInput.click());
     refInput.addEventListener('change', async (e) => {
         const el = elementsData.find(el => el.id === id);
-        if(!el) return;
+        if (!el) return;
         if (!e.target.files || e.target.files.length === 0) return;
 
         const files = Array.from(e.target.files);
-
-        for (let i=0; i < files.length; i++) {
+        for (let i = 0; i < files.length; i++) {
             if (el.refs.length >= 3) break;
             const b64 = await fileToBase64(files[i]);
             el.refs.push(b64);
@@ -207,20 +269,18 @@ btnAddElement.addEventListener('click', () => {
 
             const label = document.createElement('div');
             label.className = 'chip-label';
-            label.innerText = `@Ref${i+1}`;
+            label.innerText = `Ref${el.refs.length}`;
             chip.appendChild(label);
 
             refPreviewRow.appendChild(chip);
         }
-        log(`Ref Angles updated for Element ${id.slice(-4)}`);
-
-        // Clear input after short delay
+        log(`Ref angles updated for Element ${elementCounter}`);
         setTimeout(() => { e.target.value = ''; }, 100);
     });
     setupFileDrop(refDrop, refInput);
 
     elementsContainer.appendChild(card);
-    log(`New Element Container [${id.slice(-4)}] Initialized.`);
+    log(`Element @Element${elementCounter} added.`);
 });
 
 // KLING SCENE
@@ -231,10 +291,8 @@ const scenePreview = document.getElementById('kling-scene-preview');
 sceneDrop.addEventListener('click', () => sceneInput.click());
 sceneInput.addEventListener('change', async (e) => {
     if (!e.target.files || e.target.files.length === 0) return;
-
     const files = Array.from(e.target.files);
-
-    for (let i=0; i < files.length; i++) {
+    for (let i = 0; i < files.length; i++) {
         if (klingSceneData.length >= 4) break;
         const b64 = await fileToBase64(files[i]);
         klingSceneData.push(b64);
@@ -245,13 +303,13 @@ sceneInput.addEventListener('change', async (e) => {
         scenePreview.appendChild(chip);
     }
     log(`Scene refs loaded. Total: ${klingSceneData.length}`);
-
-    // Clear input after short delay
     setTimeout(() => { e.target.value = ''; }, 100);
 });
 setupFileDrop(sceneDrop, sceneInput);
 
-// GROK REFS
+// ========================
+// GROK REFERENCE IMAGES
+// ========================
 const grokDrop = document.getElementById('grok-ref-drop');
 const grokInput = document.getElementById('grok-ref-input');
 const grokPreview = document.getElementById('grok-ref-preview');
@@ -266,96 +324,130 @@ grokInput.addEventListener('change', async (e) => {
 
     const files = Array.from(e.target.files);
 
-    for (let i=0; i < files.length; i++) {
+    for (let i = 0; i < files.length; i++) {
         if (grokRefData.length >= 7) break;
 
-        log(`Uploading image ${i+1} to ImgBB...`);
+        log(`Uploading image ${grokRefData.length + 1}...`);
         const imageUrl = await uploadToImageHost(files[i]);
-        log(`Image ${i+1} ready: ${imageUrl.substring(0, 50)}...`);
+        log(`Image ${grokRefData.length + 1} uploaded.`, 'success');
 
         grokRefData.push(imageUrl);
 
-        const chip = document.createElement('div');
-        chip.className = 'preview-chip';
-        chip.style.backgroundImage = `url(${imageUrl})`;
+        const idx = grokRefData.length;
+
+        // Preview with remove button
+        const item = document.createElement('div');
+        item.className = 'preview-item';
+        item.style.backgroundImage = `url(${imageUrl})`;
 
         const label = document.createElement('div');
-        label.className = 'chip-label';
-        label.innerText = `@Image${grokRefData.length}`;
-        chip.appendChild(label);
+        label.className = 'preview-label';
+        label.innerText = `@Image${idx}`;
+        item.appendChild(label);
 
-        grokPreview.appendChild(chip);
+        const removeBtn = document.createElement('div');
+        removeBtn.className = 'preview-remove';
+        removeBtn.innerText = '×';
+        removeBtn.addEventListener('click', (ev) => {
+            ev.stopPropagation();
+            // Find which index this is in current state
+            const itemIdx = Array.from(grokPreview.children).indexOf(item);
+            if (itemIdx >= 0) {
+                grokRefData.splice(itemIdx, 1);
+                item.remove();
+                // Re-label all remaining previews
+                Array.from(grokPreview.children).forEach((child, ci) => {
+                    const lbl = child.querySelector('.preview-label');
+                    if (lbl) lbl.innerText = `@Image${ci + 1}`;
+                });
+                updateRefTags();
+                log(`Image removed. ${grokRefData.length} image(s) remaining.`);
+            }
+        });
+        item.appendChild(removeBtn);
+
+        grokPreview.appendChild(item);
     }
-    log(`${grokRefData.length} image(s) ready`);
 
-    // Clear input value to allow re-selecting same files
+    updateRefTags();
+    log(`${grokRefData.length} image(s) ready.`);
     e.target.value = '';
 });
 
 setupFileDrop(grokDrop, grokInput);
 
-// PROMPT UI HIGHIGHTER & ENHANCER
+// ========================
+// PROMPT HIGHLIGHTING
+// ========================
 promptInput.addEventListener('blur', () => {
     let text = promptInput.innerText;
     text = text.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    // Normalize first, then highlight
+    text = normalizePromptText(text);
     text = text.replace(/(@Image\d+|@Element\d+)/g, '<span class="ref-highlight">$1</span>');
     promptInput.innerHTML = text;
 });
 
+// ========================
+// ENHANCE PROMPT
+// ========================
 btnEnhancePrompt.addEventListener('click', async () => {
     const key = apiKeyInput.value.trim();
-    if (!key) { log('ERR: MISSING AUTH_TOKEN FOR ENHANCEMENT', 'error'); return; }
-    
-    let text = promptInput.innerText.trim();
-    if (!text) { log('ERR: NO PROMPT TO ENHANCE', 'error'); return; }
+    if (!key) { log('Enter your API key first.', 'error'); return; }
 
-    log('REQUESTING AI PROMPT ENHANCEMENT...');
+    let text = promptInput.innerText.trim();
+    if (!text) { log('Write a prompt first, then enhance it.', 'error'); return; }
+
+    log('Enhancing prompt with AI...');
     btnEnhancePrompt.disabled = true;
-    
+
     try {
         const res = await fetch("https://api.venice.ai/api/v1/chat/completions", {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
             body: JSON.stringify({
-                model: "llama-3.3-70b",
+                model: "mistral-small-2603",
                 messages: [
-                    { role: "system", content: "You are an expert video prompt engineer. Enhance the user's prompt for an AI Video generator. Ensure you preserve any @ImageX or @ElementX tags exactly as they are. Keep it under 150 words. Focus on lighting, camera movement, and clear action. Do not add any conversational filler, output ONLY the enhanced prompt." },
+                    {
+                        role: "system",
+                        content: "You are an expert video prompt engineer. Enhance the user's prompt for an AI Video generator. Ensure you preserve any @ImageX or @ElementX tags exactly as they are — keep the exact case @Image1 not @image1. Keep it under 150 words. Focus on lighting, camera movement, and clear action. Do not add any conversational filler, output ONLY the enhanced prompt."
+                    },
                     { role: "user", content: text }
                 ]
             })
         });
-        
-        if (!res.ok) throw new Error(`Chat API Failed: ${res.status}`);
+
+        if (!res.ok) throw new Error(`Chat API failed: ${res.status}`);
         const data = await res.json();
-        
+
         let enhanced = data.choices[0].message.content;
+        // Normalize any case issues from the AI
+        enhanced = normalizePromptText(enhanced);
         enhanced = enhanced.replace(/</g, "&lt;").replace(/>/g, "&gt;");
         enhanced = enhanced.replace(/(@Image\d+|@Element\d+)/g, '<span class="ref-highlight">$1</span>');
-        
+
         promptInput.innerHTML = enhanced;
-        log('PROMPT ENHANCED SUCESSFULLY.', 'success');
+        log('Prompt enhanced.', 'success');
     } catch (e) {
-        log(`ENHANCE ERR: ${e.message}`, 'error');
+        log(`Enhance failed: ${e.message}`, 'error');
     } finally {
         btnEnhancePrompt.disabled = false;
     }
 });
 
-
+// ========================
 // PAYLOAD BUILDER
-// Grok R2V docs: https://docs.venice.ai/overview/guides/reference-to-video
+// ========================
 function buildPayload(isQuote = false) {
     const model = modelSelect.value;
     const isGrok = !model.includes('kling');
     let payload = { model };
 
     if (isGrok) {
-        // Grok R2V: production API requires 's' suffix ("5s", "8s", "10s")
         payload.duration = `${duration.value}s`;
         payload.aspect_ratio = aspectRatio.value;
         payload.resolution = resolutionToggle.value;
     } else {
-        // Kling: duration with 's' suffix
         let dur = duration.value.toString();
         if (!dur.endsWith('s')) dur += 's';
         payload.duration = dur;
@@ -365,21 +457,20 @@ function buildPayload(isQuote = false) {
 
     if (isQuote) return payload;
 
-    const promptText = promptInput.innerText.trim();
-    if (!promptText) throw new Error('PROMPT CANNOT BE EMPTY');
+    let promptText = promptInput.innerText.trim();
+    if (!promptText) throw new Error('Write a prompt describing your video.');
+
+    // Normalize @image references to correct case before sending
+    promptText = normalizePromptText(promptText);
     payload.prompt = promptText;
 
     if (isGrok) {
-        // Grok R2V production API requires both:
-        // - image_url (validator requires this for all image-to-video models)
-        // - reference_image_urls (snake_case array, generation engine needs this)
         if (grokRefData.length === 0) {
-            throw new Error('Upload at least 1 reference image (max 7)');
+            throw new Error('Upload at least 1 reference image (max 7).');
         }
         payload.image_url = grokRefData[0];
         payload.reference_image_urls = grokRefData;
     } else {
-        // Kling elements
         const elementsApiData = elementsData.map(e => ({
             frontal_image_url: e.frontal,
             reference_image_urls: e.refs.length > 0 ? e.refs : undefined
@@ -389,19 +480,21 @@ function buildPayload(isQuote = false) {
         if (klingSceneData.length > 0) payload.image_urls = klingSceneData;
 
         if (!payload.elements && !payload.image_urls) {
-            throw new Error('KLING O3 reqs at least 1 Element or Scene Ref');
+            throw new Error('Kling requires at least 1 Element or Scene Reference.');
         }
     }
 
     return payload;
 }
 
-// ESTIMATE LOGIC
+// ========================
+// ESTIMATE
+// ========================
 btnQuote.addEventListener('click', async () => {
     const key = apiKeyInput.value.trim();
-    if (!key) { log('ERR: MISSING AUTH_TOKEN [API_KEY]', 'error'); return; }
+    if (!key) { log('Enter your API key first.', 'error'); return; }
 
-    log('REQUESTING ESTIMATE QUOTE...');
+    log('Requesting cost estimate...');
     try {
         const payload = buildPayload(true);
         const res = await fetch(API_QUOTE_URL, {
@@ -413,32 +506,32 @@ btnQuote.addEventListener('click', async () => {
             body: JSON.stringify(payload)
         });
 
-        if (!res.ok) throw new Error(`Quote Failed: ${res.status}`);
+        if (!res.ok) throw new Error(`Quote failed: ${res.status}`);
         const data = await res.json();
-        log(`ESTIMATE QUOTE: $${data.quote} USD`, 'success');
-        queueStatus.innerText = `ESTIMATE: $${data.quote}`;
-        queueStatus.className = "green";
+        log(`Estimate: $${data.quote} USD`, 'success');
+        setStatus(`$${data.quote}`, 'ready');
     } catch (e) {
         log(e.message, 'error');
     }
 });
 
-// GENERATOR LOGIC
+// ========================
+// GENERATE VIDEO
+// ========================
 btnGenerate.addEventListener('click', async () => {
     const key = apiKeyInput.value.trim();
-    if (!key) { log('ERR: MISSING AUTH_TOKEN [API_KEY]', 'error'); return; }
+    if (!key) { log('Enter your API key first.', 'error'); return; }
 
     let payload;
     try {
         payload = buildPayload();
-    } catch(e) {
-        log(`ERR: ${e.message}`, 'error');
+    } catch (e) {
+        log(e.message, 'error');
         return;
     }
 
     log(`Generating video with ${payload.model}...`);
-    queueStatus.innerText = "Queuing...";
-    queueStatus.className = "blinking cyan";
+    setStatus('Queuing...', 'processing');
     btnGenerate.disabled = true;
 
     try {
@@ -461,26 +554,26 @@ btnGenerate.addEventListener('click', async () => {
         const data = await res.json();
         console.log('Queue response:', JSON.stringify(data, null, 2));
 
-        // Docs show response has "id" field
         const queueId = data.id || data.queue_id;
         if (!queueId) throw new Error('No queue ID in response: ' + JSON.stringify(data));
 
         const responseModel = data.model || payload.model;
-        log(`Queue accepted. ID: ${queueId}`, 'success');
+        log(`Queued! ID: ${queueId}`, 'success');
 
         pollVideoResult(queueId, responseModel, key);
 
     } catch (err) {
         log(`API Error: ${err.message}`, 'error');
-        queueStatus.innerText = "Error";
-        queueStatus.className = "log-error";
+        setStatus('Error', 'error');
         btnGenerate.disabled = false;
     }
 });
 
-// POLLING - retrieve endpoint only needs model + queue_id
+// ========================
+// POLLING
+// ========================
 async function pollVideoResult(queueId, model, apiKey) {
-    queueStatus.innerText = "Rendering...";
+    setStatus('Rendering...', 'processing');
     let attempts = 0;
     const maxAttempts = 120;
 
@@ -489,7 +582,7 @@ async function pollVideoResult(queueId, model, apiKey) {
         if (attempts > maxAttempts) {
             clearInterval(poll);
             log('Polling timeout after 10 minutes.', 'error');
-            queueStatus.innerText = "Timeout";
+            setStatus('Timeout', 'error');
             btnGenerate.disabled = false;
             return;
         }
@@ -497,7 +590,6 @@ async function pollVideoResult(queueId, model, apiKey) {
         try {
             log(`Polling... (${attempts}/${maxAttempts})`);
 
-            // Retrieve only needs model and queue_id
             const res = await fetch(API_POLL_URL, {
                 method: 'POST',
                 headers: {
@@ -507,7 +599,7 @@ async function pollVideoResult(queueId, model, apiKey) {
                 body: JSON.stringify({ model, queue_id: queueId })
             });
 
-            if (res.status === 404) return; // Not ready yet
+            if (res.status === 404) return;
 
             if (!res.ok) {
                 const errBody = await res.text();
@@ -522,12 +614,14 @@ async function pollVideoResult(queueId, model, apiKey) {
                 const videoUrl = URL.createObjectURL(blob);
 
                 log('Video ready!', 'success');
-                queueStatus.innerText = "Complete";
-                queueStatus.className = "green";
+                setStatus('Complete', 'complete');
                 btnGenerate.disabled = false;
 
                 outputContent.innerHTML = `
-                    <video class="video-player" src="${videoUrl}" controls autoplay loop></video>
+                    <div style="display:flex; flex-direction:column; align-items:center; gap:12px; width:100%;">
+                        <video class="video-player" src="${videoUrl}" controls autoplay loop></video>
+                        <a href="${videoUrl}" download="venice-video.mp4" class="btn btn-download">Download Video</a>
+                    </div>
                 `;
             } else {
                 const data = await res.json();
@@ -536,24 +630,24 @@ async function pollVideoResult(queueId, model, apiKey) {
                 if (data.status === 'failed' || data.status === 'error') {
                     clearInterval(poll);
                     log(`Render failed: ${data.error || JSON.stringify(data)}`, 'error');
-                    queueStatus.innerText = "Failed";
-                    queueStatus.className = "log-error";
+                    setStatus('Failed', 'error');
                     btnGenerate.disabled = false;
                 }
             }
-        } catch(e) {
+        } catch (e) {
             log(`Poll warning: ${e.message}`, 'error');
             if (e.message.includes("Poll 400") || e.message.includes("Poll 401") || e.message.includes("Poll 422")) {
                 clearInterval(poll);
-                queueStatus.innerText = "Error";
-                queueStatus.className = "log-error";
+                setStatus('Error', 'error');
                 btnGenerate.disabled = false;
             }
         }
     }, 5000);
 }
 
-// Clear all
+// ========================
+// CLEAR ALL
+// ========================
 btnClear.addEventListener('click', () => {
     elementsData = [];
     klingSceneData = [];
@@ -562,16 +656,17 @@ btnClear.addEventListener('click', () => {
     scenePreview.innerHTML = '';
     grokPreview.innerHTML = '';
     promptInput.innerHTML = '';
-    log('SYS.PURGE COMPLETE.');
-    outputContent.innerHTML = '<div class="placeholder-text">// NO DATA STREAM DETECTED</div>';
-    queueStatus.innerText = "AWAITING_COMMAND...";
-    queueStatus.className = "cyan";
+    refTagsContainer.innerHTML = '';
+    log('All cleared.');
+    outputContent.innerHTML = '<div class="output-placeholder"><div class="placeholder-icon">▶</div><div>Your generated video will appear here</div></div>';
+    setStatus('Ready', 'ready');
 });
 
-// Init Log
+// ========================
+// INIT
+// ========================
 log('Venice Video Studio initialized.');
 
-// Local Storage for API key
 const savedKey = localStorage.getItem('venice_api_key');
 if (savedKey) {
     apiKeyInput.value = savedKey;
