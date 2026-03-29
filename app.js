@@ -343,33 +343,40 @@ btnEnhancePrompt.addEventListener('click', async () => {
 
 
 // PAYLOAD BUILDER
+// Grok R2V docs: https://docs.venice.ai/overview/guides/reference-to-video
 function buildPayload(isQuote = false) {
     const model = modelSelect.value;
+    const isGrok = !model.includes('kling');
     let payload = { model };
 
-    if (model.includes('kling')) {
-        // Kling uses duration with 's' suffix
+    if (isGrok) {
+        // Grok R2V: duration is "5", "8", or "10" (no 's' suffix per docs)
+        payload.duration = duration.value.toString();
+        payload.aspect_ratio = aspectRatio.value;
+        payload.resolution = resolutionToggle.value;
+    } else {
+        // Kling: duration with 's' suffix
         let dur = duration.value.toString();
         if (!dur.endsWith('s')) dur += 's';
         payload.duration = dur;
         payload.aspect_ratio = aspectRatio.value;
         payload.audio = audioToggle.value === 'true';
-    } else {
-        // Grok R2V - production API requires 's' suffix despite docs saying otherwise
-        payload.duration = `${duration.value}s`;
-        payload.aspect_ratio = aspectRatio.value;
-        payload.resolution = resolutionToggle.value;
     }
 
     if (isQuote) return payload;
 
-    // Full Generate Payload
     const promptText = promptInput.innerText.trim();
     if (!promptText) throw new Error('PROMPT CANNOT BE EMPTY');
     payload.prompt = promptText;
 
-    if (model.includes('kling')) {
-        // Build elements array
+    if (isGrok) {
+        // Grok R2V: referenceImageUrls (camelCase, array of 1-7 URLs)
+        if (grokRefData.length === 0) {
+            throw new Error('Upload at least 1 reference image (max 7)');
+        }
+        payload.referenceImageUrls = grokRefData;
+    } else {
+        // Kling elements
         const elementsApiData = elementsData.map(e => ({
             frontal_image_url: e.frontal,
             reference_image_urls: e.refs.length > 0 ? e.refs : undefined
@@ -381,13 +388,6 @@ function buildPayload(isQuote = false) {
         if (!payload.elements && !payload.image_urls) {
             throw new Error('KLING O3 reqs at least 1 Element or Scene Ref');
         }
-    } else {
-        // Grok R2V - production API requires image_url (single image)
-        if (grokRefData.length === 0) {
-            throw new Error('GROK reqs at least 1 Reference Image');
-        }
-
-        payload.image_url = grokRefData[0];
     }
 
     return payload;
@@ -433,13 +433,12 @@ btnGenerate.addEventListener('click', async () => {
         return;
     }
 
-    log(`INITIATING_SEQUENCE for model: ${payload.model}`);
-    queueStatus.innerText = "TRANSMITTING_DATA...";
+    log(`Generating video with ${payload.model}...`);
+    queueStatus.innerText = "Queuing...";
     queueStatus.className = "blinking cyan";
     btnGenerate.disabled = true;
-    
+
     try {
-        log('Sending POST to API Queue Endpoint...');
         console.log('Full payload being sent:', JSON.stringify(payload, null, 2));
 
         const res = await fetch(API_QUEUE_URL, {
@@ -453,26 +452,32 @@ btnGenerate.addEventListener('click', async () => {
 
         if (!res.ok) {
             const errBody = await res.text();
-            throw new Error(`API Handshake Failed: ${res.status} - ${errBody}`);
+            throw new Error(`Queue failed: ${res.status} - ${errBody}`);
         }
 
         const data = await res.json();
-        const queueId = data.queue_id || data.id; // Fallback to id just in case
+        console.log('Queue response:', JSON.stringify(data, null, 2));
+
+        // Docs show response has "id" field
+        const queueId = data.id || data.queue_id;
+        if (!queueId) throw new Error('No queue ID in response: ' + JSON.stringify(data));
+
         const responseModel = data.model || payload.model;
-        log(`QUEUE ACCEPTED. ID: ${queueId}`, 'success');
-        
-        pollVideoResult(queueId, responseModel, key, payload);
+        log(`Queue accepted. ID: ${queueId}`, 'success');
+
+        pollVideoResult(queueId, responseModel, key);
 
     } catch (err) {
-        log(`API_ERR: ${err.message}`, 'error');
-        queueStatus.innerText = "SYS_ERROR";
+        log(`API Error: ${err.message}`, 'error');
+        queueStatus.innerText = "Error";
         queueStatus.className = "log-error";
         btnGenerate.disabled = false;
     }
 });
 
-async function pollVideoResult(queueId, model, apiKey, originalPayload) {
-    queueStatus.innerText = "RENDERING_IN_PROGRESS...";
+// POLLING - retrieve endpoint only needs model + queue_id
+async function pollVideoResult(queueId, model, apiKey) {
+    queueStatus.innerText = "Rendering...";
     let attempts = 0;
     const maxAttempts = 120;
 
@@ -480,34 +485,30 @@ async function pollVideoResult(queueId, model, apiKey, originalPayload) {
         attempts++;
         if (attempts > maxAttempts) {
             clearInterval(poll);
-            log('POLLING TIMEOUT. MANUAL CHECK REQUIRED.', 'error');
-            queueStatus.innerText = "TIMEOUT";
+            log('Polling timeout after 10 minutes.', 'error');
+            queueStatus.innerText = "Timeout";
             btnGenerate.disabled = false;
             return;
         }
 
         try {
-            log(`Polling retrieve... (${attempts}/${maxAttempts})`);
+            log(`Polling... (${attempts}/${maxAttempts})`);
 
-            // Build retrieve body - include reference_image_urls for Grok R2V
-            const retrieveBody = { model, queue_id: queueId, delete_media_on_completion: true };
-            if (originalPayload.image_url) {
-                retrieveBody.reference_image_urls = [originalPayload.image_url];
-            }
-
+            // Retrieve only needs model and queue_id
             const res = await fetch(API_POLL_URL, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${apiKey}`
                 },
-                body: JSON.stringify(retrieveBody)
+                body: JSON.stringify({ model, queue_id: queueId })
             });
 
-            if (res.status === 404) return; // Wait
+            if (res.status === 404) return; // Not ready yet
+
             if (!res.ok) {
                 const errBody = await res.text();
-                throw new Error(`Poll Error ${res.status}: ${errBody}`);
+                throw new Error(`Poll ${res.status}: ${errBody}`);
             }
 
             const contentType = res.headers.get("Content-Type") || "";
@@ -516,9 +517,9 @@ async function pollVideoResult(queueId, model, apiKey, originalPayload) {
                 clearInterval(poll);
                 const blob = await res.blob();
                 const videoUrl = URL.createObjectURL(blob);
-                
-                log('RENDER COMPLETE! STREAM DETECTED.', 'success');
-                queueStatus.innerText = "STREAM_ONLINE";
+
+                log('Video ready!', 'success');
+                queueStatus.innerText = "Complete";
                 queueStatus.className = "green";
                 btnGenerate.disabled = false;
 
@@ -527,25 +528,26 @@ async function pollVideoResult(queueId, model, apiKey, originalPayload) {
                 `;
             } else {
                 const data = await res.json();
+                console.log('Poll response:', JSON.stringify(data, null, 2));
+
                 if (data.status === 'failed' || data.status === 'error') {
                     clearInterval(poll);
-                    log(`RENDER FAILED ON SERVER: ${data.error || 'Unknown error'}`, 'error');
-                    queueStatus.innerText = "RENDER_FAILED";
+                    log(`Render failed: ${data.error || JSON.stringify(data)}`, 'error');
+                    queueStatus.innerText = "Failed";
                     queueStatus.className = "log-error";
                     btnGenerate.disabled = false;
                 }
             }
         } catch(e) {
-            log(`POLL WARN: ${e.message}`, 'error');
-            // Check if it's a 400 or other terminal error and abort if so
-            if (e.message.includes("Poll Error 400") || e.message.includes("Poll Error 401") || e.message.includes("Poll Error 413") || e.message.includes("Poll Error 422")) {
+            log(`Poll warning: ${e.message}`, 'error');
+            if (e.message.includes("Poll 400") || e.message.includes("Poll 401") || e.message.includes("Poll 422")) {
                 clearInterval(poll);
-                queueStatus.innerText = "SYS_ERROR";
+                queueStatus.innerText = "Error";
                 queueStatus.className = "log-error";
                 btnGenerate.disabled = false;
             }
         }
-    }, 5000); // Poll every 5 seconds
+    }, 5000);
 }
 
 // Clear all
