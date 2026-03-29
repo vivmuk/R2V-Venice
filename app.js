@@ -355,8 +355,8 @@ function buildPayload(isQuote = false) {
         payload.aspect_ratio = aspectRatio.value;
         payload.audio = audioToggle.value === 'true';
     } else {
-        // Grok R2V uses duration as plain number string: "5", "8", "10"
-        payload.duration = duration.value.toString();
+        // Grok R2V - production API requires 's' suffix despite docs saying otherwise
+        payload.duration = `${duration.value}s`;
         payload.aspect_ratio = aspectRatio.value;
         payload.resolution = resolutionToggle.value;
     }
@@ -382,12 +382,12 @@ function buildPayload(isQuote = false) {
             throw new Error('KLING O3 reqs at least 1 Element or Scene Ref');
         }
     } else {
-        // Grok R2V uses referenceImageUrls (camelCase)
+        // Grok R2V - production API requires image_url (single image)
         if (grokRefData.length === 0) {
-            throw new Error('GROK reqs at least 1 Reference Image (1-7)');
+            throw new Error('GROK reqs at least 1 Reference Image');
         }
 
-        payload.referenceImageUrls = grokRefData;
+        payload.image_url = grokRefData[0];
     }
 
     return payload;
