@@ -350,8 +350,8 @@ function buildPayload(isQuote = false) {
     let payload = { model };
 
     if (isGrok) {
-        // Grok R2V: duration is "5", "8", or "10" (no 's' suffix per docs)
-        payload.duration = duration.value.toString();
+        // Grok R2V: production API requires 's' suffix ("5s", "8s", "10s")
+        payload.duration = `${duration.value}s`;
         payload.aspect_ratio = aspectRatio.value;
         payload.resolution = resolutionToggle.value;
     } else {
@@ -370,11 +370,14 @@ function buildPayload(isQuote = false) {
     payload.prompt = promptText;
 
     if (isGrok) {
-        // Grok R2V: referenceImageUrls (camelCase, array of 1-7 URLs)
+        // Grok R2V production API requires both:
+        // - image_url (validator requires this for all image-to-video models)
+        // - reference_image_urls (snake_case array, generation engine needs this)
         if (grokRefData.length === 0) {
             throw new Error('Upload at least 1 reference image (max 7)');
         }
-        payload.referenceImageUrls = grokRefData;
+        payload.image_url = grokRefData[0];
+        payload.reference_image_urls = grokRefData;
     } else {
         // Kling elements
         const elementsApiData = elementsData.map(e => ({
