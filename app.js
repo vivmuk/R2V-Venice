@@ -346,16 +346,17 @@ btnEnhancePrompt.addEventListener('click', async () => {
 function buildPayload(isQuote = false) {
     const model = modelSelect.value;
     let payload = { model };
-    
-    // Duration format: "5s", "8s", or "10s" with 's' suffix as API requires
-    let dur = duration.value.toString();
-    if (!dur.endsWith('s')) dur += 's';
-    payload.duration = dur;
 
     if (model.includes('kling')) {
+        // Kling uses duration with 's' suffix
+        let dur = duration.value.toString();
+        if (!dur.endsWith('s')) dur += 's';
+        payload.duration = dur;
         payload.aspect_ratio = aspectRatio.value;
         payload.audio = audioToggle.value === 'true';
     } else {
+        // Grok R2V uses duration as plain number string: "5", "8", "10"
+        payload.duration = duration.value.toString();
         payload.aspect_ratio = aspectRatio.value;
         payload.resolution = resolutionToggle.value;
     }
@@ -373,26 +374,22 @@ function buildPayload(isQuote = false) {
             frontal_image_url: e.frontal,
             reference_image_urls: e.refs.length > 0 ? e.refs : undefined
         })).filter(e => e.frontal_image_url);
-        
+
         if (elementsApiData.length > 0) payload.elements = elementsApiData;
-        if (klingSceneData.length > 0) payload.scene_image_urls = klingSceneData;
-        
-        if (!payload.elements && !payload.scene_image_urls) {
+        if (klingSceneData.length > 0) payload.image_urls = klingSceneData;
+
+        if (!payload.elements && !payload.image_urls) {
             throw new Error('KLING O3 reqs at least 1 Element or Scene Ref');
         }
     } else {
-        // Grok specifics
+        // Grok R2V uses referenceImageUrls (camelCase)
         if (grokRefData.length === 0) {
             throw new Error('GROK reqs at least 1 Reference Image (1-7)');
         }
 
-        // API validation requires image_url (first image)
-        payload.image_url = grokRefData[0];
-
-        // Send all images (including first) as image_urls array for R2V processing
-        payload.image_urls = grokRefData;
+        payload.referenceImageUrls = grokRefData;
     }
-    
+
     return payload;
 }
 
