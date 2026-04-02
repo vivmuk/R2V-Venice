@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:docs.venice.ai)",
+      "WebFetch(domain:api.venice.ai)"
+    ]
+  }
+}

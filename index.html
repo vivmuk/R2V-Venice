@@ -2,194 +2,168 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
     <title>Viv Imagine</title>
     <link rel="stylesheet" href="style.css">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎬</text></svg>">
 </head>
 <body>
-    <div class="app-container">
-        <header class="app-header">
-            <h1>Viv Imagine</h1>
-            <div class="header-status">
+<div class="page">
+
+    <!-- Header -->
+    <header class="page-header">
+        <h1>Viv Imagine</h1>
+        <div class="header-right">
+            <div class="status-pill">
                 <div class="status-dot" id="status-dot"></div>
                 <span id="queue-status">Ready</span>
             </div>
-        </header>
+        </div>
+    </header>
 
-        <div class="main-grid">
-            <!-- LEFT COLUMN: Config + Prompt -->
-            <div class="left-col">
+    <!-- Main studio card -->
+    <div class="studio-card">
 
-                <!-- Model Selection -->
-                <div class="card">
-                    <div class="card-label">Model</div>
-                    <select id="model-select" class="input-field">
-                        <option value="grok-imagine-reference-to-video">Grok Imagine R2V</option>
-                        <option value="kling-o3-pro-reference-to-video">Kling O3 Pro R2V</option>
-                        <option value="kling-o3-standard-reference-to-video">Kling O3 Standard R2V</option>
+        <!-- Model hint -->
+        <div class="model-hint" id="model-hint"></div>
+
+        <!-- Upload zone (contextual per model) -->
+        <div class="upload-zone" id="upload-zone"></div>
+
+        <!-- Prompt -->
+        <div class="prompt-area">
+            <div class="prompt-wrap">
+                <div id="prompt-input"
+                     class="prompt-editor"
+                     contenteditable="true"
+                     data-placeholder="Describe your video..."></div>
+                <button id="btn-enhance-prompt" class="btn-enhance-inline" title="Enhance with AI">✦</button>
+            </div>
+            <!-- Grok @Image tag chips -->
+            <div id="ref-tags"></div>
+        </div>
+
+        <!-- Toolbar -->
+        <div class="toolbar">
+            <div class="toolbar-left">
+                <button class="tb-icon-btn" id="btn-add-primary" title="Add image">+</button>
+                <button class="tb-icon-btn" id="btn-settings-toggle" title="Settings">⚙</button>
+                <div class="model-select-wrap">
+                    <span class="model-type-badge badge-r2v" id="model-badge">R2V</span>
+                    <select id="model-select" class="model-select-inner">
+                        <optgroup label="── Reference-to-Video (R2V) ──">
+                            <option value="grok-imagine-reference-to-video">Grok Imagine R2V</option>
+                            <option value="kling-o3-pro-reference-to-video">Kling O3 Pro R2V</option>
+                            <option value="kling-o3-standard-reference-to-video">Kling O3 Std R2V</option>
+                        </optgroup>
+                        <optgroup label="── Image-to-Video (I2V) ──">
+                            <option value="seedance-1-5-pro-image-to-video">Seedance 1.5 Pro</option>
+                            <option value="wan-2.6-image-to-video">Wan 2.6</option>
+                        </optgroup>
                     </select>
-                    <div class="hint" id="model-info-msg">Upload 1–7 reference images, then describe your video using <strong>@Image1</strong>, <strong>@Image2</strong>, etc.</div>
-                </div>
-
-                <!-- Grok Reference Images -->
-                <div class="card" id="grok-ui">
-                    <div class="card-label">Reference Images</div>
-                    <div class="drop-zone" id="grok-ref-drop">
-                        <div class="drop-zone-icon">+</div>
-                        <div class="drop-zone-text">Tap or drop images here</div>
-                        <div class="drop-zone-sub">Upload 1–7 images (JPG, PNG, WebP)</div>
-                        <input type="file" id="grok-ref-input" multiple accept="image/*" class="hidden-input">
-                    </div>
-                    <div class="preview-grid" id="grok-ref-preview"></div>
-                    <div class="hint mt-1">Each image gets a tag like <strong>@Image1</strong>. Use these tags in your prompt to tell the AI which image to reference. Click the tags below to insert them.</div>
-                    <div class="ref-tags" id="ref-tags"></div>
-                </div>
-
-                <!-- Kling UI (hidden by default) -->
-                <div class="card hidden" id="kling-ui">
-                    <div class="card-label">Kling Configuration</div>
-                    <div>
-                        <div class="card-title">Identity Elements (Max 7)</div>
-                        <div class="hint">Define characters with a frontal anchor image required per element.</div>
-                        <div id="elements-container" class="upload-grid mt-1"></div>
-                        <button class="btn btn-secondary mt-1" id="btn-add-element">+ Add Element</button>
-                    </div>
-
-                    <div class="mt-2">
-                        <div class="card-title">Scene Images (Max 4)</div>
-                        <div class="hint">Set environment, style, and mood.</div>
-                        <div class="drop-zone mt-1" id="kling-scene-drop">
-                            <div class="drop-zone-icon">+</div>
-                            <div class="drop-zone-text">Upload scene references</div>
-                            <div class="drop-zone-sub">Up to 4 images</div>
-                            <input type="file" id="kling-scene-input" multiple accept="image/*" class="hidden-input">
-                        </div>
-                        <div id="kling-scene-preview" class="preview-row mt-1"></div>
-                    </div>
-
-                    <div class="mt-2">
-                        <div class="card-title">Start Frame (Optional)</div>
-                        <div class="drop-zone mt-1" id="kling-start-drop">
-                            <div class="drop-zone-icon">+</div>
-                            <div class="drop-zone-text">Upload start frame</div>
-                            <input type="file" id="kling-start-input" accept="image/*" class="hidden-input">
-                        </div>
-                        <div id="kling-start-preview" class="preview-row mt-1"></div>
-                    </div>
-                </div>
-
-                <!-- Prompt -->
-                <div class="card">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                        <div class="card-label" style="margin-bottom: 0;">Prompt</div>
-                        <button id="btn-enhance-prompt" class="btn btn-enhance">Enhance with AI</button>
-                    </div>
-                    <div id="prompt-input" class="prompt-editor" contenteditable="true" data-placeholder="Describe your video... Use @Image1, @Image2 to reference your uploaded images."></div>
-                    <div class="hint" id="prompt-hint">
-                        <strong>Tip:</strong> Describe what happens in the video — camera angles, motion, lighting, mood. Always reference your images with <strong>@Image1</strong>, <strong>@Image2</strong>, etc. The AI will automatically match them.
-                    </div>
-                </div>
-
-                <!-- Settings -->
-                <div class="card">
-                    <div class="card-label">Settings</div>
-                    <div class="settings-grid">
-                        <div class="setting-group">
-                            <span class="setting-label">Aspect Ratio</span>
-                            <select id="aspect-ratio" class="input-field">
-                                <option value="16:9">16:9 — Wide</option>
-                                <option value="9:16">9:16 — Tall / Mobile</option>
-                                <option value="1:1">1:1 — Square</option>
-                                <option value="4:3">4:3 — Classic</option>
-                                <option value="3:2">3:2 — Photo</option>
-                                <option value="2:3">2:3 — Portrait</option>
-                                <option value="3:4">3:4 — Vertical Classic</option>
-                            </select>
-                        </div>
-                        <div class="setting-group">
-                            <span class="setting-label">Duration</span>
-                            <select id="duration" class="input-field">
-                                <option value="5">5 seconds</option>
-                                <option value="8">8 seconds</option>
-                                <option value="10">10 seconds</option>
-                                <option value="15">15 seconds</option>
-                            </select>
-                        </div>
-                        <div class="setting-group hidden" id="audio-setting-item">
-                            <span class="setting-label">Audio</span>
-                            <select id="audio-toggle" class="input-field">
-                                <option value="false">Off</option>
-                                <option value="true">On — Synced</option>
-                            </select>
-                        </div>
-                        <div class="setting-group" id="resolution-setting-item">
-                            <span class="setting-label">Resolution</span>
-                            <select id="resolution-toggle" class="input-field">
-                                <option value="480p">480p — Standard</option>
-                                <option value="720p">720p — High</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Actions -->
-                <div class="card">
-                    <div class="actions-stack">
-                        <button id="btn-generate" class="btn btn-generate">Generate Video</button>
-                        <button id="btn-quote" class="btn btn-estimate">Get Cost Estimate</button>
-                        <button id="btn-clear" class="btn btn-clear">Clear All</button>
-                    </div>
+                    <span class="model-chevron">▾</span>
                 </div>
             </div>
+            <div class="toolbar-right">
+                <button id="btn-quote" class="tb-estimate-btn">~ Estimate</button>
+                <button id="btn-generate" class="tb-generate-btn">Generate →</button>
+            </div>
+        </div>
 
-            <!-- RIGHT COLUMN: Output + Log -->
-            <div class="right-col">
-                <div class="output-panel" id="output-panel">
-                    <div class="output-header">
-                        <span class="output-title">Output</span>
-                        <span class="output-status ready" id="output-status-badge">Ready</span>
-                    </div>
-                    <div class="output-viewport" id="output-content">
-                        <div class="output-placeholder">
-                            <div class="placeholder-icon">▶</div>
-                            <div>Your generated video will appear here</div>
-                        </div>
-                    </div>
-                    <div class="log-console" id="log-console">
-                        <p>Ready. Enter your API key to start.</p>
-                    </div>
-                    <div class="api-key-bar">
-                        <label>API Key</label>
-                        <input type="password" id="api-key" class="input-field" placeholder="Paste your Venice AI API key">
-                    </div>
-                </div>
+        <!-- Settings panel (hidden by default) -->
+        <div class="settings-panel hidden" id="settings-panel">
+            <div class="setting-group">
+                <span class="setting-label">Aspect Ratio</span>
+                <select id="aspect-ratio" class="input-field">
+                    <option value="16:9">16:9 — Wide</option>
+                    <option value="9:16">9:16 — Tall / Mobile</option>
+                    <option value="1:1">1:1 — Square</option>
+                    <option value="4:3">4:3 — Classic</option>
+                    <option value="3:2">3:2 — Photo</option>
+                    <option value="2:3">2:3 — Portrait</option>
+                    <option value="3:4">3:4 — Vertical</option>
+                </select>
+            </div>
+            <div class="setting-group" id="setting-duration">
+                <span class="setting-label">Duration</span>
+                <select id="duration" class="input-field">
+                    <option value="5">5 seconds</option>
+                    <option value="8">8 seconds</option>
+                    <option value="10">10 seconds</option>
+                </select>
+            </div>
+            <div class="setting-group" id="setting-resolution">
+                <span class="setting-label">Resolution</span>
+                <select id="resolution-toggle" class="input-field">
+                    <option value="480p">480p</option>
+                    <option value="720p">720p</option>
+                </select>
+            </div>
+            <div class="setting-group hidden" id="setting-audio">
+                <span class="setting-label">Audio</span>
+                <select id="audio-toggle" class="input-field">
+                    <option value="false">Off</option>
+                    <option value="true">On — Synced</option>
+                </select>
             </div>
         </div>
     </div>
 
-    <!-- Kling Element Template -->
-    <template id="element-template">
-        <div class="element-card" data-id="{id}">
-            <div class="card-header">
-                <span>@Element{num}</span>
-                <span class="btn-remove-element" title="Remove">&times;</span>
-            </div>
-            <div class="card-body">
-                <div class="frontal-box drop-zone" style="padding: 16px 10px;">
-                    <div class="drop-zone-text">Frontal Photo (Click/Drop)</div>
-                    <input type="file" accept="image/*" class="hidden-input frontal-input">
-                    <div class="preview-img hidden" style="width:100%; height:60px; background-size:cover; background-position:center; margin-top:5px; border:1px solid rgba(255,255,255,0.08); border-radius:6px;"></div>
-                </div>
-                <div class="ref-box mt-1 drop-zone" style="padding: 16px 10px;">
-                    <div class="drop-zone-text">Reference Angles (Max 3)</div>
-                    <input type="file" multiple accept="image/*" class="hidden-input element-ref-input">
-                </div>
-                <div class="element-refs-preview preview-row mt-1"></div>
-            </div>
+    <!-- Kling elements panel (only visible for Kling models) -->
+    <div class="elements-panel hidden" id="kling-elements-panel">
+        <div class="elements-panel-header">
+            <span class="elements-panel-title">Character Elements</span>
+            <button class="btn-add-element" id="btn-add-element">+ Add Element</button>
         </div>
-    </template>
+        <div class="elements-grid" id="elements-container"></div>
+    </div>
 
-    <script src="app.js"></script>
+    <!-- Output section -->
+    <div class="output-section hidden" id="output-section">
+        <div class="output-header">
+            <span class="output-title">Output</span>
+            <span class="output-badge ready" id="output-badge">Ready</span>
+        </div>
+        <div class="output-content" id="output-content"></div>
+    </div>
+
+    <!-- Log -->
+    <div class="log-console" id="log-console">
+        <p>Ready. Enter your API key below.</p>
+    </div>
+
+    <!-- Bottom bar: API key + clear -->
+    <div class="bottom-bar">
+        <div class="api-key-wrap">
+            <label>API KEY</label>
+            <input type="password" id="api-key" class="api-key-input" placeholder="Paste your Venice AI key here">
+        </div>
+        <button id="btn-clear" class="btn-clear">Clear All</button>
+    </div>
+
+</div>
+
+<!-- Kling element template -->
+<template id="element-template">
+    <div class="element-card" data-id="{id}">
+        <div class="element-card-header">
+            <span>@Element{num}</span>
+            <button class="btn-remove-element" title="Remove">&times;</button>
+        </div>
+        <div class="element-card-body">
+            <div class="element-upload-slot frontal-box" title="Click to upload frontal photo">
+                <span class="slot-icon-txt">+ Frontal Photo</span>
+                <input type="file" accept="image/*" class="hidden-input frontal-input">
+            </div>
+            <div class="element-upload-slot ref-box" title="Click to upload reference angles (max 3)">
+                <span class="slot-icon-txt">+ Ref Angles (3 max)</span>
+                <input type="file" multiple accept="image/*" class="hidden-input element-ref-input">
+            </div>
+            <div class="element-refs-row"></div>
+        </div>
+    </div>
+</template>
+
+<script src="app.js"></script>
 </body>
 </html>
