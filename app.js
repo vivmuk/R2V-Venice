@@ -410,7 +410,14 @@ btnEnhancePrompt.addEventListener('click', async () => {
                 messages: [
                     {
                         role: "system",
-                        content: "You are an expert video prompt engineer. Enhance the user's prompt for an AI Video generator. Ensure you preserve any @ImageX or @ElementX tags exactly as they are — keep the exact case @Image1 not @image1. Keep it under 150 words. Focus on lighting, camera movement, and clear action. Do not add any conversational filler, output ONLY the enhanced prompt."
+                        content: `You are an expert AI video prompt engineer specializing in reference-to-video generation. Users upload photos of real people and places, then describe a scene. Your job is to enhance their prompt into a vivid, cinematic video description.
+
+RULES:
+- Preserve ALL @ImageX or @ElementX tags exactly — correct case is @Image1, @Image2, etc. Never change or remove them.
+- If the prompt involves people or faces (@Image1, @Image2, etc.), describe how they appear in the scene: their expression, pose, movement, interaction with each other and the environment.
+- Add cinematic detail: camera movement (slow push-in, tracking shot, aerial pull-back, etc.), lighting (golden hour, neon-lit, soft diffused, dramatic rim light, etc.), mood, and atmosphere.
+- Keep it under 150 words. Be vivid and specific.
+- Do NOT explain what you did. Output ONLY the enhanced prompt text.`
                     },
                     { role: "user", content: text }
                 ]
@@ -665,7 +672,7 @@ btnClear.addEventListener('click', () => {
 // ========================
 // INIT
 // ========================
-log('Venice Video Studio initialized.');
+log('Viv Imagine initialized.');
 
 const savedKey = localStorage.getItem('venice_api_key');
 if (savedKey) {
