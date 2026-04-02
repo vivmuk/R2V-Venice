@@ -215,14 +215,12 @@ function buildUploadZone(mode) {
 
 // ── GROK slots ──
 function renderGrokSlots() {
-    // Render existing uploaded images
+    uploadZone.innerHTML = '';
     grokRefData.forEach((url, i) => {
         uploadZone.appendChild(makeGrokFilledSlot(url, i));
     });
-    // Empty "add" slot if under limit
     if (grokRefData.length < 7) {
-        const empty = makeGrokEmptySlot();
-        uploadZone.appendChild(empty);
+        uploadZone.appendChild(makeGrokEmptySlot());
     }
     updateRefTags();
 }
@@ -376,23 +374,54 @@ function setupDrop(zone, input) {
 // ============================================================
 // REF TAG CHIPS (Grok only)
 // ============================================================
+// Track the last saved cursor range so tag chips can insert at cursor
+let savedPromptRange = null;
+
+promptInput.addEventListener('keyup',   savePromptRange);
+promptInput.addEventListener('mouseup', savePromptRange);
+promptInput.addEventListener('focus',   savePromptRange);
+
+function savePromptRange() {
+    const sel = window.getSelection();
+    if (sel?.rangeCount && promptInput.contains(sel.getRangeAt(0).commonAncestorContainer)) {
+        savedPromptRange = sel.getRangeAt(0).cloneRange();
+    }
+}
+
 function updateRefTags() {
     refTagsEl.innerHTML = '';
     grokRefData.forEach((_, i) => {
         const btn = document.createElement('span');
         btn.className = 'ref-tag';
         btn.innerText = `@Image${i + 1}`;
+        btn.addEventListener('mousedown', (e) => {
+            // Prevent blur so selection is preserved
+            e.preventDefault();
+        });
         btn.addEventListener('click', () => {
-            promptInput.focus();
             const tag = `@Image${i + 1} `;
+            promptInput.focus();
             const sel = window.getSelection();
-            if (sel?.rangeCount && promptInput.contains(sel.getRangeAt(0).commonAncestorContainer)) {
-                const range = sel.getRangeAt(0);
+
+            // Use saved range if cursor was inside prompt
+            const range = savedPromptRange || null;
+            if (range && promptInput.contains(range.commonAncestorContainer)) {
+                sel.removeAllRanges();
+                sel.addRange(range);
                 range.deleteContents();
                 range.insertNode(document.createTextNode(tag));
                 range.collapse(false);
+                savedPromptRange = range.cloneRange();
             } else {
-                promptInput.innerText += tag;
+                // Append to end as fallback
+                const end = document.createRange();
+                end.selectNodeContents(promptInput);
+                end.collapse(false);
+                end.insertNode(document.createTextNode(tag));
+                end.collapse(false);
+                sel.removeAllRanges();
+                sel.addRange(end);
+                savedPromptRange = end.cloneRange();
             }
         });
         refTagsEl.appendChild(btn);
@@ -514,20 +543,28 @@ btnEnhancePrompt.addEventListener('click', async () => {
 
     const cfg    = currentConfig();
     const isGrok = cfg.uploadMode === 'grok';
-    const imageCount = isGrok ? grokRefData.length : 0;
+
+    // Extract every @ImageX / @ElementX tag present in the original prompt
+    const originalTags = [...new Set(
+        [...text.matchAll(/@image(\d+)|@element(\d+)/gi)]
+            .map(m => m[0].replace(/@image(\d+)/i, (_,n) => `@Image${n}`)
+                          .replace(/@element(\d+)/i, (_,n) => `@Element${n}`))
+    )];
+    const tagList = originalTags.length ? originalTags.join(', ') : 'none';
 
     const systemPrompt = `You are an expert AI video prompt engineer specializing in ${cfg.label} generation.
 
 Your job: enhance the user's prompt into a vivid, cinematic video description.
 
-RULES:
-${isGrok ? `- This is a Reference-to-Video model. The user has uploaded ${imageCount} reference image(s) tagged as @Image1${imageCount > 1 ? ', @Image2' : ''}${imageCount > 2 ? ', ...' : ''}.
-- Preserve ALL @ImageX tags exactly as written — @Image1 not @image1.
-- If the images contain people or faces, describe their appearance, expression, pose, movement, and interaction.` : ''}
-${cfg.uploadMode === 'kling' ? `- This is a Kling element-based model. Preserve ALL @ElementX tags exactly.
-- Describe how each character element interacts in the scene.` : ''}
-${cfg.type === 'i2v' ? `- This is an image-to-video model. Focus on describing the motion, camera movement, and action that transforms the starting image into a dynamic video.` : ''}
-- Add cinematic detail: camera movement (slow push-in, tracking shot, aerial pull-back, etc.), lighting (golden hour, neon-lit, soft diffused, dramatic rim light), mood, and atmosphere.
+CRITICAL TAG RULE — This is the most important rule:
+The user's prompt contains these reference tags: ${tagList}.
+Every single one of these tags MUST appear in your enhanced output, exactly as written (capital I in @Image, capital E in @Element). Do NOT drop, rename, or reorder them. Weave them naturally into the description.
+
+ADDITIONAL RULES:
+${isGrok ? `- If the images contain people or faces, describe their appearance, expression, pose, movement, and interaction.` : ''}
+${cfg.uploadMode === 'kling' ? `- Describe how each character element interacts in the scene.` : ''}
+${cfg.type === 'i2v' ? `- Focus on describing the motion and action that transforms the starting image into a dynamic video.` : ''}
+- Add cinematic detail: camera movement (slow push-in, tracking shot, aerial pull-back), lighting (golden hour, neon-lit, dramatic rim light), mood, and atmosphere.
 - Keep it under 150 words. Be vivid and specific.
 - Output ONLY the enhanced prompt. No explanations, no preamble.`;
 
@@ -546,7 +583,20 @@ ${cfg.type === 'i2v' ? `- This is an image-to-video model. Focus on describing t
         if (!res.ok) throw new Error(`Chat API ${res.status}`);
         const data = await res.json();
         let enhanced = data.choices[0].message.content;
+
+        // Normalize case first
         enhanced = normalizeRefs(enhanced);
+
+        // Safety net: re-inject any tags the AI dropped, appended at the end
+        const missingTags = originalTags.filter(tag => {
+            const re = new RegExp(tag.replace('@', '@'), 'i');
+            return !re.test(enhanced);
+        });
+        if (missingTags.length) {
+            enhanced = enhanced.trimEnd() + ' ' + missingTags.join(' ');
+            log(`Re-injected missing tags: ${missingTags.join(', ')}`, 'success');
+        }
+
         enhanced = enhanced.replace(/</g, '&lt;').replace(/>/g, '&gt;');
         enhanced = enhanced.replace(/(@Image\d+|@Element\d+)/g, '<span class="ref-highlight">$1</span>');
         promptInput.innerHTML = enhanced;

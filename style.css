@@ -863,6 +863,28 @@ body {
     background: rgba(255,45,123,0.06);
 }
 
+/* ===== KEY PROMO ===== */
+.key-promo {
+    text-align: center;
+    font-size: 12px;
+    color: var(--text-dim);
+    padding: 4px 0 8px;
+}
+
+.key-promo a {
+    color: var(--neon-cyan);
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.key-promo a:hover {
+    text-decoration: underline;
+}
+
+.key-promo strong {
+    color: var(--neon-green);
+}
+
 /* ===== UTILS ===== */
 .hidden { display: none !important; }
 

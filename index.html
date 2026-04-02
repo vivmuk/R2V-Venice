@@ -32,14 +32,11 @@
 
         <!-- Prompt -->
         <div class="prompt-area">
-            <div class="prompt-wrap">
-                <div id="prompt-input"
-                     class="prompt-editor"
-                     contenteditable="true"
-                     data-placeholder="Describe your video..."></div>
-                <button id="btn-enhance-prompt" class="btn-enhance-inline" title="Enhance with AI">✦</button>
-            </div>
-            <!-- Grok @Image tag chips -->
+            <div id="prompt-input"
+                 class="prompt-editor"
+                 contenteditable="true"
+                 data-placeholder="Describe your video..."></div>
+            <!-- @Image tag chips -->
             <div id="ref-tags"></div>
         </div>
 
@@ -48,6 +45,7 @@
             <div class="toolbar-left">
                 <button class="tb-icon-btn" id="btn-add-primary" title="Add image">+</button>
                 <button class="tb-icon-btn" id="btn-settings-toggle" title="Settings">⚙</button>
+                <button class="tb-icon-btn" id="btn-enhance-prompt" title="Enhance prompt with AI" style="font-size:12px;font-weight:700;width:auto;padding:0 10px;color:var(--neon-purple);border-color:rgba(180,74,255,0.3);background:rgba(180,74,255,0.1);">✦ Enhance</button>
                 <div class="model-select-wrap">
                     <span class="model-type-badge badge-r2v" id="model-badge">R2V</span>
                     <select id="model-select" class="model-select-inner">
@@ -139,6 +137,10 @@
             <input type="password" id="api-key" class="api-key-input" placeholder="Paste your Venice AI key here">
         </div>
         <button id="btn-clear" class="btn-clear">Clear All</button>
+    </div>
+
+    <div class="key-promo">
+        Don't have a key? <a href="https://venice.ai/chat?ref=yN8qqI" target="_blank" rel="noopener">Get one at Venice AI</a> — sign up and receive <strong>$10 free credits</strong> to start generating.
     </div>
 
 </div>
